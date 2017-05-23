@@ -172,7 +172,8 @@ def conv_model_with_layers_api(input_layer, dropout_rate, mode):
             # TODO add dropout wrapper for LSTM
 
         # Logits layer
+        # TODO : Should be a sparseTensor
         with tf.name_scope("logits"):
-            logits = tf.layers.dense(inputs=lstm_outputs, units=20)
+            logits = tf.layers.dense(inputs=lstm_outputs, units=20) # 22?
 
         return logits
