@@ -28,9 +28,9 @@ def _float_feature_list(values):
 
 
 
-'''#####################'''
-'''# Input Pipeline    #'''
-'''#####################'''
+'''######################################################'''
+'''#                   Input Pipeline                   #'''
+'''######################################################'''
 
 def preprocessing_op(image_op):
     '''most preprocess should be done while making the .tfrecords files?'''
@@ -122,4 +122,29 @@ def look_into_tfRecords(filenames, data_type):
     plt.figure()
     plt.axis("off")
     plt.imshow(img) # Note that image may look wierd because it is normalized.
+    
+
+'''######################################################'''
+'''#        functions used in network creation          #'''
+'''######################################################'''
+
+def sparse_tuple_from(sequences, dtype=np.int32):
+    """Create a sparse representention of x.
+    Args:
+        sequences: a list of lists of type dtype where each element is a sequence
+    Returns:
+        A tuple with (indices, values, shape)
+    """
+    indices = []
+    values = []
+
+    for n, seq in enumerate(sequences):
+        indices.extend(zip([n]*len(seq), range(len(seq))))
+        values.extend(seq)
+
+    indices = np.asarray(indices, dtype=np.int64)
+    values = np.asarray(values, dtype=dtype)
+    shape = np.asarray([len(sequences), np.asarray(indices).max(0)[1]+1], dtype=np.int64)
+
+    return indices, values, shape
 
