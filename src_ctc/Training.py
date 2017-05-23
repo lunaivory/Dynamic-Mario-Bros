@@ -72,7 +72,7 @@ counter_correct_prediction = tf.Varialbe(0, name='counter_correct_prediction', t
 counter_samples_fed = tf.Variable(0, name='counter_samples_fed', trainable=False)
 
 # Loss calculations: cross-entropy
-with tf.name_scope('cross_entropy_loss'):
+with tf.name_scope('ctc_loss'):
     #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=input_labels_op))
     # inputs : 3-D float Tensor
     # logits : an int32 sparseTensor
