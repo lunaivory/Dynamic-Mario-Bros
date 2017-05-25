@@ -46,8 +46,10 @@ print("Writing to {}\n".format(FLAGS.model_dir))
 
 ''' set up placeholders '''
 # Feed a batch of training data at each training step using the {feed_dict} argument in sess.run()
-train_samples_op, train_labels_op = input_pipline(TRAIN_FILENAMES, 'Train')
-validation_samples_op, validation_labels_op = input_pipline(VALIDATION_FILENAMES, 'Validation')
+train_samples_op, train_labels_index, train_labels_value, train_labels_shape = input_pipeline(TRAIN_FILENAMES, 'Train')
+train_labels_op = tf.SparseTensor(train_labels_index, train_labels_value, train_labels_shape)
+validation_samples_op, validation_labels_index, validation_labels_value, validation_labels_shape = input_pipeline(VALIDATION_FILENAMES, 'Validation')
+validation_labels_op = tf.SparseTensor(validation_labels_index, validation_labels_value, validation_labels_shape)
 
 mode = tf.placeholder(tf.bool, name='mode') # Pass True in when it is in the trainging mode
 loss_avg = tf.placeholder(tf.float32, name='loss_avg')

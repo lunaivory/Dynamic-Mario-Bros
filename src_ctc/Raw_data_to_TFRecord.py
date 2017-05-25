@@ -66,10 +66,16 @@ def get_data(path, data_type, write_path, sample_ids, label_path = None):
             
         '''Create TFRecord structure'''
         context = tf.train.Features(feature={'sample_id': util._int64_feature(sample_id)})
+
+        # Create sparse tensor for CTC lost
+        indices, values, shapes = util.sparse_tuple_from([labels])
+        labels = tf.SparseTensor(indices, values, shapes)
             
         featureLists = tf.train.FeatureLists(feature_list={
             'rgbs':util._bytes_feature_list(rgbs),
-            'labels':util._int64_feature_list(labels)
+            'labels_index': util._bytes_feature_list(indices),
+            'labels_value': util._bytes_feature_list(values),
+            'labels_shape': util._bytes_feature_list(shapes)
         })
        
         sequence_example = tf.train.SequenceExample(context=context, feature_lists=featureLists)
@@ -85,6 +91,6 @@ def get_data(path, data_type, write_path, sample_ids, label_path = None):
 
 
 if __name__ == '__main__':
-    #get_data(RAW_DATA_PATH, 'Train', TFRecord_DATA_PATH, TRAIN_ID)
+    get_data(RAW_DATA_PATH, 'Train', TFRecord_DATA_PATH, TRAIN_ID)
     #get_data(RAW_DATA_PATH, 'Validation', TFRecord_DATA_PATH, VALIDATION_ID, label_path = RAW_DATA_PATH + 'Validation_reference/')
-    get_data(RAW_DATA_PATH, 'Test', TFRecord_DATA_PATH, TEST_ID)
+    #get_data(RAW_DATA_PATH, 'Test', TFRecord_DATA_PATH, TEST_ID)
