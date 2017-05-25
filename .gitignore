@@ -4,3 +4,5 @@ src/.idea
 skeleton/*
 notebook/*
 __pycache__/*
+*.pyc
+*.swp
