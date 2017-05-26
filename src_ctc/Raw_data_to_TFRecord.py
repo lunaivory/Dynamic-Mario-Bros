@@ -52,7 +52,6 @@ def get_data(path, data_type, write_path, sample_ids, label_path = None):
             else: 
                 segmentation_mask = sample.getUser(f)
                 if (segmentation_mask.sum() == 0):
-                    label[f] = EMPTY_PADDING
                     print('Empty segmentation mask for Sample %d on frame %d' % (sample_id, f))
                 rgb_data = sample.getRGB(f) * segmentation_mask
                 rgb_data = rgb_data[CROP[0]:CROP[1], CROP[2]:CROP[3],:]
@@ -66,18 +65,17 @@ def get_data(path, data_type, write_path, sample_ids, label_path = None):
             
         '''Create TFRecord structure'''
         context = tf.train.Features(feature={'sample_id': util._int64_feature(sample_id),
-                                             'gesture_list_len': ugil._int64_feature(len(gesture_list))})
+                                             'gesture_list_len': util._int64_feature(len(gesture_list))})
 
 #        # Create sparse tensor for CTC lost
-#        indices, values, shapes = util.sparse_tuple_from([labels])
+        indices, values, shapes = util.sparse_tuple_from(labels)
 #        labels = tf.SparseTensor(indices, values, shapes)
             
         featureLists = tf.train.FeatureLists(feature_list={
             'rgbs':util._bytes_feature_list(rgbs),
-            'labels': util._int64_feature_list(labels)
-#            'labels_index': util._bytes_feature_list(indices),
-#            'labels_value': util._bytes_feature_list(values),
-#            'labels_shape': util._bytes_feature_list(shapes)
+            'labels_index': util._bytes_feature_list(indices),
+            'labels_value': util._bytes_feature_list(values),
+            'labels_shape': util._bytes_feature_list(shapes)
         })
        
         sequence_example = tf.train.SequenceExample(context=context, feature_lists=featureLists)

@@ -49,29 +49,33 @@ def read_and_decode(filename_queue):
     readerOptions = tf.python_io.TFRecordOptions(compression_type=tf.python_io.TFRecordCompressionType.GZIP)
     reader = tf.TFRecordReader(options=readerOptions)
     _, serialized_example = reader.read(filename_queue)
-    
+
     with tf.name_scope('TFRecordDecoding'):
         context_encoded, features_encoded = tf.parse_single_sequence_example(
             serialized_example,
-            context_features={'sample_id': tf.FixedLenFeature([], dtype=tf.int64)},
+            context_features={'sample_id': tf.FixedLenFeature([], dtype=tf.int64), 'gesture_list_len': tf.FixedLenFeature([], dtype=tf.int64)},
             sequence_features={
                 'rgbs':tf.FixedLenSequenceFeature([],dtype=tf.string), # TODO: check string or bytes
-                'labels_index': tf.FixedLenSequenceFeature([], dtype = tf.string),
-                'labels_value': tf.FixedLenSequenceFeature([], dtype = tf.string),
-                'labels_shape': tf.FixedLenSequenceFeature([], dtype = tf.string)
+#                'labels': tf.FixedLenSequenceFeature([], dtype=tf.int64)
+                'labels_index': tf.FixedLenSequenceFeature([],dtype = tf.string),
+                'labels_value': tf.FixedLenSequenceFeature([],dtype = tf.string),
+                'labels_shape': tf.FixedLenSequenceFeature([],dtype = tf.string)
             }
         )
+        gesture_list_len = tf.cast(context_encoded['gesture_list_len'], tf.int32)
+        # apply preprocessing to single image using map_fn
         seq_rgb = tf.decode_raw(features_encoded['rgbs'], tf.uint8)
         seq_label_index = tf.decode_raw(features_encoded['labels_index'], tf.int64)
         seq_label_value = tf.decode_raw(features_encoded['labels_value'], tf.int64)
         seq_label_shape = tf.decode_raw(features_encoded['labels_shape'], tf.int64)
-        # apply preprocessing to single image using map_fn
+
         seq_rgb = tf.map_fn(lambda x: preprocessing_op(x), elems = seq_rgb, dtype=tf.float32, back_prop=False)
-        seq_label_index = tf.map_fn(lambda x: tf.reshape(x, [CLIPS_PER_VIDEO, 2]), elems=seq_label_index, dtype=tf.int64, back_prop=False)[0]
-        seq_label_value = tf.map_fn(lambda x: tf.reshape(x, [CLIPS_PER_VIDEO]), elems=seq_label_value, dtype=tf.int64, back_prop=False)[0]
-        seq_label_shape = tf.map_fn(lambda x: tf.reshape(x, [CLIPS_PER_VIDEO]), elems=seq_label_shape, dtype=tf.int64, back_prop=False)[0]
+        seq_label_index = tf.map_fn(lambda x: tf.reshape(x, [gesture_list_len, 2]), elems=seq_label_index, dtype=tf.int64, back_prop=False)[0]
+        seq_label_value = tf.map_fn(lambda x: tf.reshape(x, [gesture_list_len]), elems=seq_label_value, dtype=tf.int64, back_prop=False)[0]
+        seq_label_shape = tf.map_fn(lambda x: tf.reshape(x, [2]), elems=seq_label_shape, dtype=tf.int64, back_prop=False)[0]
         
-        return [seq_rgb, seq_label_index, seq_label_value, seq_label_shape]
+        return [seq_rgb, tf.SparseTensor(seq_label_index, seq_label_value, seq_label_shape)]
+#        return [seq_rgb, seq_label_index, seq_label_value, seq_label_shape]
     
 
 def input_pipeline(filenames, data_type):
@@ -85,19 +89,17 @@ def input_pipeline(filenames, data_type):
         
         # Create batches
         # batch_join is used for N threads, can use batch_join_shuffle too
-        batch_rgb, batch_label_index, batch_label_value, batch_label_shape = tf.train.batch_join(samples, 
+        batch_rgb, batch_label = tf.train.batch_join(samples, 
                           batch_size = BATCH_SIZE,
                           capacity = QUEUE_CAPACITY,
-                          shapes = [
-                            [CLIPS_PER_VIDEO, FRAMES_PER_CLIP] + list(IMAGE_SIZE), 
-                            [CLIPS_PER_VIDEO, 2], 
-                            [CLIPS_PER_VIDEO], 
-                            [CLIPS_PER_VIDEO]],
+#                          shapes = [
+#                            [CLIPS_PER_VIDEO, FRAMES_PER_CLIP] + list(IMAGE_SIZE), 
+#                            []
                           enqueue_many= False, 
-                          dynamic_pad = False, 
+                          dynamic_pad = True, 
                           name = 'batch_join')
         if (data_type == 'Train' or data_type == 'Validation'):
-            return batch_rgb, batch_label_index, batch_label_value, batch_label_shape
+            return batch_rgb, batch_label
         else:
             return batch_rgb
 
@@ -143,23 +145,31 @@ def look_into_tfRecords(filenames, data_type):
 '''#        functions used in network creation          #'''
 '''######################################################'''
 
-def sparse_tuple_from(sequences, dtype=np.int32):
-    """Create a sparse representention of x.
-    Args:
-        sequences: a list of lists of type dtype where each element is a sequence
-    Returns:
-        A tuple with (indices, values, shape)
-    """
-    indices = []
-    values = []
-
-    for n, seq in enumerate(sequences):
-        indices.extend(zip([n]*len(seq), range(len(seq))))
-        values.extend(seq)
-
-    indices = np.asarray(indices, dtype=np.int64)
-    values = np.asarray(values, dtype=np.int64)
-    shape = np.asarray([len(sequences), np.asarray(indices).max(0)[1]+1], dtype=np.int64)
+def sparse_tuple_from(sequence, dtype=np.int64):
+    
+    indices = np.asarray(list(zip([0] * len(sequence), range(len(sequence)))), dtype=dtype)
+    values = np.asarray(sequence, dtype=dtype)
+    shape = np.asarray([1, len(sequence)], dtype=dtype)
 
     return indices, values, shape
+    
+#def sparse_tuple_from(sequences, dtype=np.int32):
+#    """Create a sparse representention of x.
+#    Args:
+#        sequences: a list of lists of type dtype where each element is a sequence
+#    Returns:
+#        A tuple with (indices, values, shape)
+#    """
+#    indices = []
+#    values = []
+#
+#    for n, seq in enumerate(sequences):
+#        indices.extend(zip([n]*len(seq), range(len(seq))))
+#        values.extend(seq)
+#
+#    indices = np.asarray(indices, dtype=np.int64)
+#    values = np.asarray(values, dtype=np.int64)
+#    shape = np.asarray([len(sequences), np.asarray(indices).max(0)[1]+1], dtype=np.int64)
+#
+#    return indices, values, shape
 

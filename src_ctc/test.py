@@ -19,8 +19,8 @@ graph = tf.Graph()
 with graph.as_default():
 
     ''' place holders'''
-    train_samples_op, train_labels_index, train_labels_value, train_labels_shape = input_pipeline(TRAIN_FILENAMES, 'Train')
-    train_labels_op = tf.SparseTensor(train_labels_index[0], train_labels_value[0], train_labels_shape[0])
+#    train_samples_op, train_labels_index, train_labels_value, train_labels_shape = input_pipeline(TRAIN_FILENAMES, 'Train')
+    train_samples_op, train_labels_op = input_pipeline(TRAIN_FILENAMES, 'Train')
 
     validation_samples_op, validation_labels_index, validation_labels_value, validation_labels_shape = input_pipeline(VALIDATION_FILENAMES, 'Validation')
     validation_labels_op = tf.SparseTensor(validation_labels_index, validation_labels_value, validation_labels_shape)
