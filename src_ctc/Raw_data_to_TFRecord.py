@@ -38,10 +38,11 @@ def get_data(path, data_type, write_path, sample_ids, label_path = None):
         if (num_of_frames > MAX_FRAMES):
             raise Exception('Sample %d has %d Frames (> MAX_FRAMES:%d)' %(sample_id, num_of_frames, MAX_FRAMES))
             
-        label = [EMPTY_PADDING] + [NO_GESTURE]* num_of_frames + [EMPTY_PADDING] * (MAX_FRAMES - num_of_frames)
         has_label = True if len(gesture_list) > 0 else False
+        labels = []
         for gesture_id, start_frame, end_frame in gesture_list:
-            label[start_frame:end_frame+1] = [gesture_id]*(end_frame + 1 - start_frame)
+            labels += [gesture_id]
+        labels = labels + [0] * (FRAMES_PER_CLIP - len(labels))
         
         '''Get sliced and cropped RGB data from the whole sample'''
         rgb = [np.zeros(IMAGE_SIZE)]
@@ -57,25 +58,26 @@ def get_data(path, data_type, write_path, sample_ids, label_path = None):
                 rgb_data = rgb_data[CROP[0]:CROP[1], CROP[2]:CROP[3],:]
             rgb += [rgb_data]
             
+            
         '''Make it into clips'''
         rgbs = []
-        labels = []
         for f in range(1, MAX_FRAMES+1, FRAMES_PER_CLIP):
             rgbs += [np.asarray(rgb[f:f+FRAMES_PER_CLIP])]
-            labels += [int(stats.mode(label[f:f+FRAMES_PER_CLIP])[0])]
             
         '''Create TFRecord structure'''
-        context = tf.train.Features(feature={'sample_id': util._int64_feature(sample_id)})
+        context = tf.train.Features(feature={'sample_id': util._int64_feature(sample_id),
+                                             'gesture_list_len': ugil._int64_feature(len(gesture_list))})
 
-        # Create sparse tensor for CTC lost
-        indices, values, shapes = util.sparse_tuple_from([labels])
-        labels = tf.SparseTensor(indices, values, shapes)
+#        # Create sparse tensor for CTC lost
+#        indices, values, shapes = util.sparse_tuple_from([labels])
+#        labels = tf.SparseTensor(indices, values, shapes)
             
         featureLists = tf.train.FeatureLists(feature_list={
             'rgbs':util._bytes_feature_list(rgbs),
-            'labels_index': util._bytes_feature_list(indices),
-            'labels_value': util._bytes_feature_list(values),
-            'labels_shape': util._bytes_feature_list(shapes)
+            'labels': util._int64_feature_list(labels)
+#            'labels_index': util._bytes_feature_list(indices),
+#            'labels_value': util._bytes_feature_list(values),
+#            'labels_shape': util._bytes_feature_list(shapes)
         })
        
         sequence_example = tf.train.SequenceExample(context=context, feature_lists=featureLists)

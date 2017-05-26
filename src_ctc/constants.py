@@ -2,9 +2,9 @@
 '''# Constant Settings #'''
 '''#####################'''
 
-TRAIN_ID = range(3,11)         # Raw file format : Sample0001.zip - Sample0470.zip
-VALIDATION_ID = range(471,481)  # Raw file format : Sample0471.zip - Sample0700.zip
-TEST_ID = range(701,711)        # Raw file format : Sample0701.zip - Sample0941.zip
+TRAIN_ID = range(3,6)         # Raw file format : Sample0001.zip - Sample0470.zip
+VALIDATION_ID = range(471,474)  # Raw file format : Sample0471.zip - Sample0700.zip
+TEST_ID = range(701,702)        # Raw file format : Sample0701.zip - Sample0941.zip
 # TRAIN_LIST = range(1,471)         # Raw file format : Sample0001.zip - Sample0470.zip
 # VALIDATION_LIST = range(471,701)  # Raw file format : Sample0471.zip - Sample0700.zip
 # TEST_LIST = range(701,941)        # Raw file format : Sample0701.zip - Sample0941.zip
