@@ -51,8 +51,8 @@ def get_data(path, data_type, write_path, sample_ids, label_path = None):
                 rgb_data = np.zeros(IMAGE_SIZE, dtype=np.uint8)
             else: 
                 segmentation_mask = sample.getUser(f)
-                if (segmentation_mask.sum() == 0):
-                    print('Empty segmentation mask for Sample %d on frame %d' % (sample_id, f))
+                #if (segmentation_mask.sum() == 0):
+                #    print('Empty segmentation mask for Sample %d on frame %d' % (sample_id, f))
                 rgb_data = sample.getRGB(f) * segmentation_mask
                 rgb_data = rgb_data[CROP[0]:CROP[1], CROP[2]:CROP[3],:]
             rgb += [rgb_data]
