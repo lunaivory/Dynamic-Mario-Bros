@@ -4,6 +4,7 @@ import numpy as np
 import models
 import matplotlib.pyplot as plt
 import time as time
+import skvideo.io
 import os
 
 '''####################################################'''
@@ -13,77 +14,83 @@ from constants import *
 from util import input_pipeline
 from util import sparse_tuple_from
 
+def main(argv):
+    graph = tf.Graph()
 
-graph = tf.Graph()
+    with graph.as_default():
 
-with graph.as_default():
+        ''' place holders'''
 
-    ''' place holders'''
-#    train_samples_op, train_labels_index, train_labels_value, train_labels_shape = input_pipeline(TRAIN_FILENAMES, 'Train')
-    train_samples_op, train_labels_op = input_pipeline(TRAIN_FILENAMES, 'Train')
+        train_samples_op, train_labels_op = input_pipeline(TRAIN_FILENAMES, 'Train')
 
-    validation_samples_op, validation_labels_index, validation_labels_value, validation_labels_shape = input_pipeline(VALIDATION_FILENAMES, 'Validation')
-    validation_labels_op = tf.SparseTensor(validation_labels_index, validation_labels_value, validation_labels_shape)
+        validation_samples_op, validation_labels_op = input_pipeline(VALIDATION_FILENAMES, 'Validation')
 
+        global_step = tf.Variable(1, name='global_step', trainable=False)
+        mode = tf.placeholder(tf.bool, name='mode') # Pass True in when it is in the trainging mode
 
-    mode = tf.placeholder(tf.bool, name='mode') # Pass True in when it is in the trainging mode
-    input_samples_op, input_labels_op = tf.cond(
-                    mode, 
-                    lambda: (train_samples_op, train_labels_op), 
-                    lambda: (validation_samples_op, validation_labels_op)
-    )
-    input_seq_op = ([CLIPS_PER_VIDEO] * BATCH_SIZE)
+        input_samples_op, input_labels_op = tf.cond(
+                        mode,
+                        lambda: (train_samples_op, train_labels_op),
+                        lambda: (validation_samples_op, validation_labels_op)
+        )
+        input_seq_op = [BATCH_SIZE]
 
+        '''Define the cells'''
+        logits = models.dynamic_mario_bros(input_samples_op, DROPOUT_RATE, mode)
 
-    seq_len = tf.placeholder(tf.int32, [BATCH_SIZE])
+        loss = tf.nn.ctc_loss(input_labels_op, logits, input_seq_op, time_major=False)
+        cost = tf.reduce_mean(loss)
 
+        # learning_rate = tf.train.exponential_decay(LEARNING_RATE, global_step,
+        # decay_steps = 1 * FLAGS.epoch_length, decay_rate=0.96, stiarecase=True)
+        optimizer = tf.train.AdamOptimizer(LEARNING_RATE)
+        train_op = optimizer.minimize(loss, global_step=global_step)
 
-    '''Define the cells'''
-    logits = models.conv_model_with_layers_api(input_samples_op, DROPOUT_RATE, mode)
+    with tf.Session(graph=graph, config=tf.ConfigProto(device_count={'GPU':0})) as sess:
+    # with tf.Session(graph=graph) as sess:
+        # set up the queue
 
-    loss = tf.nn.ctc_loss(input_labels_op, logits, input_seq_op, time_major=False)
-    cost = tf.reduce_mean(loss)
+        init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+        sess.run(init_op)
 
-    learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step,
-                                                                                        decay_steps = 1 * FLAGS.epoch_length, decay_rate=0.96, stiarecase=True)
-    optimizer = tf.train.AdamOptimizer(learning_rate)
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
-with tf.Session(graph=graph) as sess:
-    # set up the queue
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        try:
 
-    init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-    sess.run(init_op)
+            for epoch in range(1, NUM_EPOCHS + 1):
 
-    for epoch in range(1, NUM_EPOCHS + 1):
-        train_cost = 0
-        start = time.time()
-        
-        for batch in range(len(TRAIN_FILENAMES) / BATCH_SIZE):
-                
-            try:
                 if coord.should_stop():
                     break
 
-                #feed_dict = {input_sample_op : train_inputs,
-                #                         target_sample_op: train_labels,
-                #                         seq_len: np.asarray([CLIPS_PER_VIDEO]*BATCH_SIZE))
-                feed_dict = {mode: True}
+                train_cost = 0
+                start = time.time()
 
-                batch_cost, _ = sess.run([cost, optimizer], feed_dict)
-                train_cost += batch_cost * batch_size
+                for batch in range(5): #range(round(len(TRAIN_FILENAMES) / BATCH_SIZE)):
 
-            except Exception as e:
-                coord.request_stop(e)
-            finally:
-                coord.request_stop()
-                coord.join(threads)
+                        feed_dict = {mode: True}
+                        input_samples, input_labels = sess.run([input_samples_op, input_labels_op], feed_dict)
+                        name = "test%02d.mp4" % (batch)
+                        skvideo.io.vwrite(name, np.reshape(input_samples, (400,112,112,3)))
+                        # batch_cost, _ = sess.run([cost, train_op], feed_dict)
+                        # print(batch_cost, flush=True)
+                        print('Saved video ' + name)
+                        # train_cost += batch_cost * batch_size
+
+        except Exception as e:
+            # Report exceptions to the coordinator.
+            print(str(e))
+            coord.request_stop(e)
+
+        finally:
+        # Terminate as usual. It is safe to call `coord.request_stop()` twice.
+            coord.request_stop()
+            coord.join(threads)
 
 
-train_cost /= len(TRAIN_FILENAMES)
-print('[%d/%d] [Training] Loss : %.3f' % (epoch, epoch * len(TRAIN_FILENAMES)/BATCH_SIZE + batch, train_loss))
+    # train_cost /= len(TRAIN_FILENAMES)
+    # print('[%d/%d] [Training] Loss : %.3f' % (epoch, epoch * len(TRAIN_FILENAMES)/BATCH_SIZE + batch, train_loss))
 
 if __name__ == '__main__':
 
-    tf.app.run()
+    tf.app.run(main)

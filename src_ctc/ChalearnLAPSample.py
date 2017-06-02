@@ -22,6 +22,11 @@ import csv
 from PIL import Image, ImageDraw
 from scipy.misc import imresize
 import numpy
+from constants import *
+import numpy as np
+
+import skvideo.io
+import skvideo.datasets
 from scipy import misc
 
 class Skeleton(object):
@@ -155,6 +160,9 @@ class GestureSample(object):
 
         self.rgb = cv2.VideoCapture(rgbVideoPath)
 
+        # fast loading of entire video
+        self.entire_rgb = skvideo.io.vread(rgbVideoPath)
+
         while not self.rgb.isOpened():
             self.rgb = cv2.VideoCapture(rgbVideoPath)
             cv2.waitKey(500)
@@ -226,6 +234,11 @@ class GestureSample(object):
         del self.depth;
         del self.user;
         shutil.rmtree(self.samplePath)
+
+    def get_entire_rgb_video(self):
+        """ Load entire video as a 4d array"""
+
+        return self.entire_rgb
 
     def getFrame(self,video, frameNum):
         """ Get a single frame from given video object """

@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-import models
+import models_backup
 import matplotlib.pyplot as plt
 import time as time
 import os
@@ -62,7 +62,7 @@ input_samples_op, input_labels_op, input_seq_op = tf.cond(mode, lambda: (train_s
                                                                 lambda: (validation_samples_op, validation_labels_op, [CLIPS_PER_VIDEO] * BATCH_SIZE))
 # pass in parameters that controls external inputs
 # Returns 'logits' layer, the top-most layer of the network
-logits = models.conv_model_with_layers_api(input_samples_op, FLAGS.dropout_rate, mode)
+logits = models_backup.conv_model_with_layers_api(input_samples_op, FLAGS.dropout_rate, mode)
 
 
 '''Set up Variables'''
