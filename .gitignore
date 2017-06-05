@@ -6,6 +6,7 @@ skeleton/*
 notebook/*
 *.swp
 src_ctc/*.mp4
+src_ctc/runs/*
 
 __pycache__/*
 *.pyc

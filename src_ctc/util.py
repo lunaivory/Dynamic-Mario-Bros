@@ -28,105 +28,12 @@ def _float_feature_list(values):
     return tf.train.FeatureList(feature=[_float_feature(v) for v in values])
 
 
+def sparse_tuple_from(sequence, dtype=np.int32):
+    indices = np.asarray(list(zip([0] * len(sequence), range(len(sequence)))), dtype=np.int64)
+    values = np.asarray(sequence, dtype=dtype)
+    shape = np.asarray([1, len(sequence)], dtype=np.int64)
 
-'''######################################################'''
-'''#                   Input Pipeline                   #'''
-'''######################################################'''
-
-def video_preprocessing_op(video_op):
-    with tf.name_scope('Single_gesture_video_preprocessing'):
-
-        #define constant tensors needed for preprocessing
-        clips_in_video = tf.constant(CROP[0], shape=[1], dtype=tf.int32)
-        channels = tf.constant(CROP[3], shape=[1], dtype=tf.int32)
-
-        # Reshape for easier preprocessing
-        clip_op = tf.reshape(video_op, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP] + list(IMAGE_SIZE))
-
-        #### Take random crop of dimension CROP=(CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3)
-        zero_tensor = tf.zeros(shape=[1], dtype=tf.int32)
-        col_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[0] - CROP[1]), dtype=tf.int32)
-        row_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[1] - CROP[2]), dtype=tf.int32)
-        begin_crop = tf.squeeze(tf.stack([zero_tensor, col_crop_idx, row_crop_idx, zero_tensor]))
-        processed_video = tf.slice(clip_op, begin=begin_crop, size=CROP)
-
-        #### Random rotation of +- 15 deg
-        # angle = np.random.randint(low=-ROT_ANGLE, high=ROT_ANGLE)
-        angle = tf.random_uniform(shape=[1],minval=-ROT_ANGLE, maxval=ROT_ANGLE, dtype=tf.float32)
-        processed_video = tf.contrib.image.rotate(processed_video, angles=angle)
-
-        #### Random scaling
-        # do this by taking a crop of random size and then resizing to the original shape
-        begin_col = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2*CROP[1])), dtype=tf.int32)
-        begin_row = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[2])), dtype=tf.int32)
-        # get crop window size scaling_col, scaling_row
-        crop_col = tf.constant(CROP[1], dtype=tf.int32)
-        crop_row = tf.constant(CROP[2], dtype=tf.int32)
-        scaling_col = tf.subtract(crop_col, begin_col)
-        scaling_row = tf.subtract(crop_row, begin_row)
-        # do scaling by slicing and then resizing to orignal size
-        begin_scaling = tf.squeeze(tf.stack([zero_tensor, begin_col, begin_row, zero_tensor]))
-        size_scaling = tf.squeeze(tf.stack([clips_in_video, scaling_col, scaling_row, channels]))
-        scaling_crop = tf.slice(processed_video, begin=begin_scaling, size=size_scaling)
-        processed_video = tf.image.resize_images(scaling_crop, size=[CROP[1], CROP[2]])
-
-        # reshape to correct size for nework
-        processed_video = tf.reshape(processed_video, [CLIPS_PER_VIDEO, FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
-
-    return processed_video
-    
-def read_and_decode(filename_queue):
-    readerOptions = tf.python_io.TFRecordOptions(compression_type=tf.python_io.TFRecordCompressionType.GZIP)
-    reader = tf.TFRecordReader(options=readerOptions)
-    _, serialized_example = reader.read(filename_queue)
-
-    with tf.name_scope('TFRecordDecoding'):
-        context_encoded, features_encoded = tf.parse_single_sequence_example(
-            serialized_example,
-            context_features={'sample_id': tf.FixedLenFeature([], dtype=tf.int64), 'gesture_list_len': tf.FixedLenFeature([], dtype=tf.int64)},
-            sequence_features={
-                'rgbs':tf.FixedLenSequenceFeature([],dtype=tf.string),
-                'label':tf.FixedLenSequenceFeature([],dtype=tf.string)
-            }
-        )
-
-        # decode video and apply preprocessing to entire video
-        seq_rgb = tf.decode_raw(features_encoded['rgbs'], tf.uint8)
-        seq_rgb_pp = video_preprocessing_op(seq_rgb)
-
-        # decode label and reshape it correct size for shuffle_batch
-        seq_label = tf.decode_raw(features_encoded['label'], tf.int32)
-        seq_label = tf.reshape(seq_label, [1])
-
-        return seq_rgb_pp, seq_label
-
-def input_pipeline(filenames, data_type):
-    with tf.name_scope('input_pipeline'):
-        # Create a input file queue
-        filename_queue = tf.train.string_input_producer(filenames, num_epochs=NUM_EPOCHS, shuffle=True, capacity=1000)
-
-        # Read data from .tfrecords files and decode to a list of samples (Using threads)
-        data, label = read_and_decode(filename_queue)
-
-        # Create batches
-        batch_rgb, batch_label = tf.train.shuffle_batch([data, label],
-                                                        batch_size=BATCH_SIZE,
-                                                        capacity=QUEUE_CAPACITY,
-                                                        min_after_dequeue=int(QUEUE_CAPACITY / 2),
-                                                        )
-
-        batch_rgb = tf.reshape(batch_rgb, [BATCH_SIZE * CLIPS_PER_VIDEO, FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
-
-        # make sparse tensor from batch labels
-        idx = tf.where(tf.not_equal(batch_label, 0))
-        vals = tf.gather_nd(batch_label, idx)
-        vals = tf.cast(vals, dtype=tf.int32)
-        batch_label_sparse = tf.SparseTensor(idx, vals, batch_label.get_shape())
-
-        if (data_type == 'Train' or data_type == 'Validation'):
-            return batch_rgb, batch_label_sparse
-        else:
-            return batch_rgb
+    return indices, values, shape
 
 # Function used to inspect data get from tfrecords files
 # Example usage :
@@ -135,27 +42,27 @@ def input_pipeline(filenames, data_type):
 #   look_into_tfRecords(TRAIN_FILENAMES + VALIDATION_FILENAMES, 'Train')
 # TODO : Fix it to current feature list
 def look_into_tfRecords(filenames, data_type):
-#    get_ipython().magic(u'matplotlib inline')
+    #    get_ipython().magic(u'matplotlib inline')
     print(filenames)
 
     # input_samples_op, input_labels_op = input_pipeline(filenames, data_type)
     test = input_pipeline(filenames, data_type)
     '''input to ctc test'''
-    #input_seq_op = tf.Variable([CLIPS_PER_VIDEO] * BATCH_SIZE)
-    #mode = tf.placeholder(tf.bool, name='mode') # Pass True in when it is in the trainging mode
-    #logits = models.conv_model_with_layers_api(input_samples_op, 0.5, mode)
-    #loss = tf.nn.ctc_loss(input_labels_op, logits, input_seq_op, time_major=False)
+    # input_seq_op = tf.Variable([CLIPS_PER_VIDEO] * BATCH_SIZE)
+    # mode = tf.placeholder(tf.bool, name='mode') # Pass True in when it is in the trainging mode
+    # logits = models.conv_model_with_layers_api(input_samples_op, 0.5, mode)
+    # loss = tf.nn.ctc_loss(input_labels_op, logits, input_seq_op, time_major=False)
 
-    sess = tf.Session(config=tf.ConfigProto(device_count={'GPU':0}))
+    sess = tf.Session(config=tf.ConfigProto(device_count={'GPU': 0}))
     init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     sess.run(init_op)
     # Create threads to prefetch the data
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    
+
     data = sess.run([test])
-    
-    # Print 
+
+    # Print
     print("# Samples: " + str(len(input_samples)))
     print("Sequence labels: " + str(input_labels))
 
@@ -167,44 +74,45 @@ def look_into_tfRecords(filenames, data_type):
     img = input_samples[0][50][0]
     print("Image shape: " + str(img.shape))
 
+
 #    plt.figure()
 #    plt.axis("off")
 #    plt.imshow(img) # Note that image may look wierd because it is normalized.
-    
-#look_into_tfRecords(TRAIN_FILENAMES, 'Train')
+
+# look_into_tfRecords(TRAIN_FILENAMES, 'Train')
 
 '''######################################################'''
 '''#        functions used in network creation          #'''
 '''######################################################'''
 
+
 def sparse_tuple_from(sequence, dtype=np.int32):
-    
     indices = np.asarray(list(zip([0] * len(sequence), range(len(sequence)))), dtype=np.int64)
     values = np.asarray(sequence, dtype=dtype)
     shape = np.asarray([1, len(sequence)], dtype=np.int64)
 
     return indices, values, shape
 
-# TODO can we delete this?
-#def sparse_tuple_from(sequences, dtype=np.int32):
-#    """Create a sparse representention of x.
-#    Args:
-#        sequences: a list of lists of type dtype where each element is a sequence
-#    Returns:
-#        A tuple with (indices, values, shape)
-#    """
-#    indices = []
-#    values = []
-#
-#    for n, seq in enumerate(sequences):
-#        indices.extend(zip([n]*len(seq), range(len(seq))))
-#        values.extend(seq)
-#
-#    indices = np.asarray(indices, dtype=np.int64)
-#    values = np.asarray(values, dtype=np.int64)
-#    shape = np.asarray([len(sequences), np.asarray(indices).max(0)[1]+1], dtype=np.int64)
-#
-#    return indices, values, shape
+    # TODO can we delete this?
+    # def sparse_tuple_from(sequences, dtype=np.int32):
+    #    """Create a sparse representention of x.
+    #    Args:
+    #        sequences: a list of lists of type dtype where each element is a sequence
+    #    Returns:
+    #        A tuple with (indices, values, shape)
+    #    """
+    #    indices = []
+    #    values = []
+    #
+    #    for n, seq in enumerate(sequences):
+    #        indices.extend(zip([n]*len(seq), range(len(seq))))
+    #        values.extend(seq)
+    #
+    #    indices = np.asarray(indices, dtype=np.int64)
+    #    values = np.asarray(values, dtype=np.int64)
+    #    shape = np.asarray([len(sequences), np.asarray(indices).max(0)[1]+1], dtype=np.int64)
+    #
+    #    return indices, values, shape
 
 
-# look_into_tfRecords(TRAIN_FILENAMES, 'Train')
+    # look_into_tfRecords(TRAIN_FILENAMES, 'Train')

@@ -1,7 +1,7 @@
 
 import tensorflow as tf
 import numpy as np
-import models
+import model
 import matplotlib.pyplot as plt
 import time as time
 import skvideo.io
@@ -11,8 +11,8 @@ import os
 '''#                 Self-defined library             #'''
 '''####################################################'''
 from constants import *
-from util import input_pipeline
-from util import sparse_tuple_from
+import util_training
+import util_val
 
 def main(argv):
     graph = tf.Graph()
@@ -20,26 +20,17 @@ def main(argv):
     with graph.as_default():
 
         ''' place holders'''
-
-        train_samples_op, train_labels_op = input_pipeline(TRAIN_FILENAMES, 'Train')
-
-        validation_samples_op, validation_labels_op = input_pipeline(VALIDATION_FILENAMES, 'Validation')
-
         global_step = tf.Variable(1, name='global_step', trainable=False)
-        mode = tf.placeholder(tf.bool, name='mode') # Pass True in when it is in the trainging mode
+        mode = tf.placeholder(dtype=tf.bool, name='mode') # Pass True in when it is in the trainging mode
 
-        input_samples_op, input_labels_op = tf.cond(
-                        mode,
-                        lambda: (train_samples_op, train_labels_op),
-                        lambda: (validation_samples_op, validation_labels_op)
-        )
+        input_samples_op, input_labels_op, input_dense_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
+
         input_seq_op = [BATCH_SIZE]
 
         '''Define the cells'''
-        logits = models.dynamic_mario_bros(input_samples_op, DROPOUT_RATE, mode)
+        logits = model.dynamic_mario_bros(input_samples_op, DROPOUT_RATE, mode)
 
         loss = tf.nn.ctc_loss(input_labels_op, logits, input_seq_op, time_major=False)
-        cost = tf.reduce_mean(loss)
 
         # learning_rate = tf.train.exponential_decay(LEARNING_RATE, global_step,
         # decay_steps = 1 * FLAGS.epoch_length, decay_rate=0.96, stiarecase=True)
@@ -66,12 +57,16 @@ def main(argv):
                 train_cost = 0
                 start = time.time()
 
-                for batch in range(5): #range(round(len(TRAIN_FILENAMES) / BATCH_SIZE)):
+                for batch in range(10): #range(round(len(TRAIN_FILENAMES) / BATCH_SIZE)):
 
                         feed_dict = {mode: True}
-                        input_samples, input_labels = sess.run([input_samples_op, input_labels_op], feed_dict)
-                        name = "test%02d.mp4" % (batch)
-                        skvideo.io.vwrite(name, np.reshape(input_samples, (400,112,112,3)))
+                        input_samples, input_labels, input_dense_labels = sess.run([input_samples_op, input_labels_op, input_dense_label_op], feed_dict)
+                        name = "train%02d.mp4" % (batch)
+                        skvideo.io.vwrite(name, np.reshape(input_samples, (400, 112, 112, 3)))
+                        # feed_dict = {mode: False}
+                        # ind_, input_samples, input_labels, ids, frames = sess.run([input_samples_op, validation_labels_op, validation_ids_op, validation_num_frames_op], feed_dict)
+                        # name = "val%02d.mp4" % (batch)
+                        # skvideo.io.vwrite(name, np.reshape(input_samples, (400,112,112,3)))
                         # batch_cost, _ = sess.run([cost, train_op], feed_dict)
                         # print(batch_cost, flush=True)
                         print('Saved video ' + name)

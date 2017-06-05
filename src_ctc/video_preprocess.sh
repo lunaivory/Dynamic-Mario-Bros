@@ -7,7 +7,7 @@
 ######
 echo "Video Preprocessing Started"
 
-cd ../data
+cd ../TEST_DIR
 declare -a data_ids=("Train" "Test" "Validation" "Validation_reference")
 final_dir="../data_pp"
 

@@ -141,7 +141,7 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
         # Flatten tensor into a batch of vectors
         # shape=[batch_size, max_time, flat
         with tf.name_scope("flatten"):
-            pool5_flat = tf.reshape(pool5, shape=[-1, 5 * 5 * 512])
+            pool5_flat = tf.reshape(pool5, shape=[-1, 4 * 4 * 512])
 
         # Dense Layer
         with tf.name_scope("dense1"):

@@ -29,12 +29,11 @@ DROPOUT_RATE = 0.5
 LEARNING_RATE = 5e-4
 BATCH_SIZE = 5 # 5 gestures per batch
 NUM_EPOCHS = 1
-PRINT_EVERY_STEP = 200
+PRINT_EVERY_STEP = 1 #200
 EVALUATE_EVERY_STEP = 1000
-CHECKPOINT_EVERY_STEP = 1000
+CHECKPOINT_EVERY_STEP = 1 #1000
 
 QUEUE_CAPACITY = int(BATCH_SIZE * 10)
-
 
 
 from os import listdir
@@ -45,7 +44,7 @@ train_path = '%s%s' % (TFRecord_DATA_PATH, 'Train')
 TRAIN_FILENAMES = [join(train_path, f) for f in listdir(train_path) if isfile(join(train_path, f))]
 
 test_path = '%s%s' % (TFRecord_DATA_PATH, 'Test')
-TEST_FILENAMES = [join(test_path, f) for f in listdir(test_path) if isfile(join(test_path, f))]
+TEST_FILENAMES = sorted([join(test_path, f) for f in listdir(test_path) if isfile(join(test_path, f))])
 
 validation_path = '%s%s' % (TFRecord_DATA_PATH, 'Validation')
-VALIDATION_FILENAMES =  [join(validation_path, f) for f in listdir(validation_path) if isfile(join(validation_path, f))]
+VALIDATION_FILENAMES = sorted([join(validation_path, f) for f in listdir(validation_path) if isfile(join(validation_path, f))])
