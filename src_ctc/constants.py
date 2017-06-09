@@ -2,7 +2,7 @@
 '''# Constant Settings #'''
 '''#####################'''
 
-TRAIN_ID = range(3,6)         # Raw file format : Sample0001.zip - Sample0470.zip
+TRAIN_ID = range(37,100)         # Raw file format : Sample0001.zip - Sample0470.zip
 VALIDATION_ID = range(475,478)  # Raw file format : Sample0471.zip - Sample0700.zip
 TEST_ID = range(701,702)        # Raw file format : Sample0701.zip - Sample0941.zip
 
@@ -27,7 +27,7 @@ NO_GESTURE = 21
 '''Training parameters'''
 DROPOUT_RATE = 0.5
 LEARNING_RATE = 5e-4
-BATCH_SIZE = 5 # 5 gestures per batch
+BATCH_SIZE = 4 # 5 gestures per batch
 NUM_EPOCHS = 1
 PRINT_EVERY_STEP = 1 #200
 EVALUATE_EVERY_STEP = 1000

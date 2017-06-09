@@ -60,7 +60,6 @@ def get_data_training(path, data_type, write_path, sample_ids):
         for gesture_id, start_frame, end_frame in gesture_list:
             labels += [gesture_id]
             mid_frame += [round((start_frame + end_frame) / 2)]
-        labels = labels + [0] * (FRAMES_PER_CLIP - len(labels))
 
         # get entire video
         vid = sample.get_entire_rgb_video()
