@@ -62,7 +62,8 @@ def main(argv):
                         feed_dict = {mode: True}
                         input_samples, input_labels, input_dense_labels = sess.run([input_samples_op, input_labels_op, input_dense_label_op], feed_dict)
                         name = "train%02d.mp4" % (batch)
-                        skvideo.io.vwrite(name, np.reshape(input_samples, (400, 112, 112, 3)))
+                        temp  =np.reshape(input_samples, (FRAMES_PER_VIDEO*BATCH_SIZE, 112, 112, 3))
+                        skvideo.io.vwrite(name, temp)
                         # feed_dict = {mode: False}
                         # ind_, input_samples, input_labels, ids, frames = sess.run([input_samples_op, validation_labels_op, validation_ids_op, validation_num_frames_op], feed_dict)
                         # name = "val%02d.mp4" % (batch)
