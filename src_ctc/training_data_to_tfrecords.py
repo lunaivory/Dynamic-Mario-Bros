@@ -78,9 +78,9 @@ def get_data_training(path, data_type, write_path, sample_ids):
             start = f - 40
             end = f + 40
 
-            label_padding_start = abs(start - gesture_list[id][1])
-            label_padding_end = abs(gesture_list[id][2] - end)
-            label_gesture = gesture_list[id][2] - gesture_list[id][1]
+            # label_padding_start = abs(start - gesture_list[id][1])
+            # label_padding_end = abs(gesture_list[id][2] - end)
+            # label_gesture = gesture_list[id][2] - gesture_list[id][1]
 
             if start < 0:
                 start_padding = -start
@@ -104,7 +104,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
                                                                              FRAMES_PER_CLIP) + (IMAGE_SIZE))
 
             # get frame by frame labels to calculate accuracy during training and Jaccard score for val/test
-            dense_lab = label_padding_start * [NO_GESTURE] + label_gesture * [lab] + label_padding_end * [NO_GESTURE]
+            dense_lab = start_padding * [NO_GESTURE] + (end - start) * [lab] + end_padding * [NO_GESTURE]
 
             videos += [single_video]
             dense_label += [dense_lab]
