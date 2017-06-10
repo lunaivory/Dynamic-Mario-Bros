@@ -180,7 +180,10 @@ class GestureSample(object):
         userVideoPath=self.samplePath + os.path.sep + self.seqID + '_user.mp4'
         if not os.path.exists(userVideoPath):
             raise Exception("Invalid sample file. User segmentation data is not available")
+
         self.user = cv2.VideoCapture(userVideoPath)
+        self.entire_user = skvideo.io.vread(userVideoPath)
+
         while not self.user.isOpened():
             self.user = cv2.VideoCapture(userVideoPath)
             cv2.waitKey(500)
@@ -239,6 +242,11 @@ class GestureSample(object):
         """ Load entire video as a 4d array"""
 
         return self.entire_rgb
+
+    def get_entire_user_video(self):
+        """ Load entire video as a 4d array"""
+
+        return self.entire_user
 
     def getFrame(self,video, frameNum):
         """ Get a single frame from given video object """

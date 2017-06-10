@@ -72,9 +72,9 @@ def video_preprocessing_training_op(video_op):
         processed_video = tf.image.resize_images(scaling_crop, size=[CROP[1], CROP[2]])
 
         # normalise single images
-        processed_video = tf.unstack(tf.reshape(processed_video, [CLIPS_PER_VIDEO*FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]]))
-        processed_video = [tf.image.per_image_standardization(i) for i in processed_video]
-        processed_video = tf.stack(processed_video)
+        processed_video = tf.reshape(processed_video, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
+        mean, var = tf.nn.moments(processed_video, axes=[0,1,2])
+        processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
 
         # reshape to correct size for nework
         processed_video = tf.reshape(processed_video, [CLIPS_PER_VIDEO, FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])

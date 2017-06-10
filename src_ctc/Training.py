@@ -75,7 +75,7 @@ with graph.as_default():
     # Loss calculations: cross-entropy
     with tf.name_scope('ctc_loss'):
         # Return : A 1-D float tensor of shape [1]
-        loss = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits, sequence_length=[FLAGS.batch_size], time_major=False))
+        loss = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
 
     # Accuracy calculations
     with tf.name_scope('accuracy'):
@@ -108,8 +108,7 @@ with graph.as_default():
     tf.add_to_collection('input_samples_op', input_samples_op)
     tf.add_to_collection('mode', mode)
 
-with tf.Session(graph=graph, config=tf.ConfigProto(device_count={'GPU':0})) as sess:
-    # with tf.Session(graph=graph) as sess:
+with tf.Session(graph=graph) as sess:
     ''' Create Session '''
     init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     sess.run(init_op)
