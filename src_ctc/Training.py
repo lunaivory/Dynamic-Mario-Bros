@@ -75,7 +75,8 @@ with graph.as_default():
     # Loss calculations: cross-entropy
     with tf.name_scope('ctc_loss'):
         # Return : A 1-D float tensor of shape [1]
-        loss = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_dense_label_op, logits=logits))
+        # loss = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
 
     # Accuracy calculations
     with tf.name_scope('accuracy'):

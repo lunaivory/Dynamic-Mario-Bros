@@ -23,19 +23,19 @@ def main(argv):
         global_step = tf.Variable(1, name='global_step', trainable=False)
         mode = tf.placeholder(dtype=tf.bool, name='mode') # Pass True in when it is in the trainging mode
 
-        input_samples_op, input_labels_op, input_dense_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
+        input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
 
         input_seq_op = [BATCH_SIZE]
 
         '''Define the cells'''
         logits = model.dynamic_mario_bros(input_samples_op, DROPOUT_RATE, mode)
 
-        loss = tf.nn.ctc_loss(input_labels_op, logits, input_seq_op, time_major=False)
+        # loss = tf.nn.ctc_loss(input_labels_op, logits, input_seq_op, time_major=False)
 
         # learning_rate = tf.train.exponential_decay(LEARNING_RATE, global_step,
         # decay_steps = 1 * FLAGS.epoch_length, decay_rate=0.96, stiarecase=True)
-        optimizer = tf.train.AdamOptimizer(LEARNING_RATE)
-        train_op = optimizer.minimize(loss, global_step=global_step)
+        # optimizer = tf.train.AdamOptimizer(LEARNING_RATE)
+        # train_op = optimizer.minimize(loss, global_step=global_step)
 
     with tf.Session(graph=graph, config=tf.ConfigProto(device_count={'GPU':0})) as sess:
     # with tf.Session(graph=graph) as sess:
@@ -60,18 +60,11 @@ def main(argv):
                 for batch in range(10): #range(round(len(TRAIN_FILENAMES) / BATCH_SIZE)):
 
                         feed_dict = {mode: True}
-                        input_samples, input_labels, input_dense_labels = sess.run([input_samples_op, input_labels_op, input_dense_label_op], feed_dict)
+                        input_samples, input_labels, input_clip_labels = sess.run([input_samples_op, input_labels_op, input_clip_label_op], feed_dict)
                         name = "train%02d.mp4" % (batch)
                         temp  =np.reshape(input_samples, (FRAMES_PER_VIDEO*BATCH_SIZE, 112, 112, 3))
                         skvideo.io.vwrite(name, temp)
-                        # feed_dict = {mode: False}
-                        # ind_, input_samples, input_labels, ids, frames = sess.run([input_samples_op, validation_labels_op, validation_ids_op, validation_num_frames_op], feed_dict)
-                        # name = "val%02d.mp4" % (batch)
-                        # skvideo.io.vwrite(name, np.reshape(input_samples, (400,112,112,3)))
-                        # batch_cost, _ = sess.run([cost, train_op], feed_dict)
-                        # print(batch_cost, flush=True)
                         print('Saved video ' + name)
-                        # train_cost += batch_cost * batch_size
 
         except Exception as e:
             # Report exceptions to the coordinator.

@@ -166,18 +166,18 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
             dropout2 = tf.layers.dropout(inputs=dense2, rate=dropout_rate, training=mode)
 
         # Flatten tensor into coorect format for LSTM, here batch size is 1, max time is 250
-        with tf.name_scope("flatten_LSTM"):
-            dropout2_flat = tf.reshape(dropout2, shape=[1, -1, 4096])
-            seq_length = tf.shape(dropout2_flat)[1]
-
-        # Add dropout operation
-        with tf.name_scope("LSTM"):
-            lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=512)
-            lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, dropout2_flat, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
-            # TODO add dropout wrapper for LSTMs
+        # with tf.name_scope("flatten_LSTM"):
+        #     dropout2_flat = tf.reshape(dropout2, shape=[1, -1, 4096])
+        #     seq_length = tf.shape(dropout2_flat)[1]
+        #
+        # # Add dropout operation
+        # with tf.name_scope("LSTM"):
+        #     lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=512)
+        #     lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, dropout2_flat, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
+        #     # TODO add dropout wrapper for LSTMs
 
         # Logits layer
         with tf.name_scope("logits"):
-            logits = tf.layers.dense(inputs=dropout2_flat, units=21)
+            logits = tf.layers.dense(inputs=dropout2, units=21)
 
         return logits

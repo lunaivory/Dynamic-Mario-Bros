@@ -73,14 +73,16 @@ def get_data_training(path, data_type, write_path, sample_ids):
         end_padding = 0
         videos = []
         dense_label = []
+        clip_label = []
+        clip_label_video = []
 
         for f, lab, id in zip(mid_frame, labels, range(len(labels))):
             start = f - 40
             end = f + 40
 
-            # label_padding_start = abs(start - gesture_list[id][1])
-            # label_padding_end = abs(gesture_list[id][2] - end)
-            # label_gesture = gesture_list[id][2] - gesture_list[id][1]
+            label_padding_start = abs(start - gesture_list[id][1])
+            label_padding_end = abs(gesture_list[id][2] - end)
+            label_gesture = gesture_list[id][2] - gesture_list[id][1]
 
             if start < 0:
                 start_padding = -start
@@ -104,12 +106,20 @@ def get_data_training(path, data_type, write_path, sample_ids):
                                                                              FRAMES_PER_CLIP) + (IMAGE_SIZE))
 
             # get frame by frame labels to calculate accuracy during training and Jaccard score for val/test
-            dense_lab = start_padding * [NO_GESTURE] + (end - start) * [lab] + end_padding * [NO_GESTURE]
+            dense_lab = label_padding_start * [NO_GESTURE] + label_gesture * [lab] + label_padding_end * [NO_GESTURE]
+            for i in range(0,FRAMES_PER_VIDEO, FRAMES_PER_CLIP):
+                extracted_labels = np.asarray(dense_lab[i: i+FRAMES_PER_CLIP]) == lab
+                if np.sum(extracted_labels) < 4:
+                    clip_label_video += [NO_GESTURE]
+                else:
+                    clip_label_video += [lab]
 
             videos += [single_video]
             dense_label += [dense_lab]
+            clip_label += [clip_label_video]
             start_padding = 0
             end_padding = 0
+            clip_label_video = []
 
         for gesture_video, label, ind in zip(videos, labels, range(len(labels))):
             '''Create TFRecord structure'''
@@ -120,6 +130,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
                 'rgbs': util._bytes_feature_list(gesture_video),
                 'label': util._bytes_feature_list(np.asarray((label-1,), dtype=np.int32)),
                 'dense_label': util._bytes_feature_list(np.asarray(dense_label[ind], dtype=np.int32)-1),
+                'clip_label': util._bytes_feature_list(np.asarray(clip_label[ind], dtype=np.int32) - 1),
                 'sample_id': util._bytes_feature_list(np.asarray((sample_id,), dtype=np.int32)),
                 'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))
             })

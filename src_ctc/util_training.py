@@ -93,6 +93,7 @@ def read_and_decode(filename_queue):
                 'rgbs':tf.FixedLenSequenceFeature([],dtype=tf.string),
                 'label':tf.FixedLenSequenceFeature([],dtype=tf.string),
                 'dense_label': tf.FixedLenSequenceFeature([], dtype=tf.string),
+                'clip_label': tf.FixedLenSequenceFeature([], dtype=tf.string),
                 'sample_id': tf.FixedLenSequenceFeature([], dtype=tf.string),
                 'num_frames': tf.FixedLenSequenceFeature([], dtype=tf.string)
             }
@@ -112,7 +113,11 @@ def read_and_decode(filename_queue):
         seq_label_dense = tf.decode_raw(features_encoded['dense_label'], tf.int32)
         seq_label_dense = tf.reshape(seq_label_dense, [FRAMES_PER_VIDEO])
 
-        return seq_rgb_pp, seq_label, seq_label_dense
+        # get per clip labels to train 3dcnn
+        seq_label_clip = tf.decode_raw(features_encoded['clip_label'], tf.int32)
+        seq_label_clip = tf.reshape(seq_label_clip, [CLIPS_PER_VIDEO])
+
+        return seq_rgb_pp, seq_label, seq_label_dense, seq_label_clip
 
 def input_pipeline(filenames):
     with tf.name_scope('input_pipeline_training'):
@@ -122,10 +127,10 @@ def input_pipeline(filenames):
                                                         name='Training_string_input')
 
         # Read data from .tfrecords files and decode to a list of samples (Using threads)
-        data, label, dense_label= read_and_decode(filename_queue)
+        data, label, dense_label, clip_label = read_and_decode(filename_queue)
 
         # Create batches
-        batch_rgb, batch_label, batch_dense_label = tf.train.shuffle_batch([data, label, dense_label],
+        batch_rgb, batch_label, batch_dense_label, batch_clip_label = tf.train.shuffle_batch([data, label, dense_label, clip_label],
                                                         batch_size=BATCH_SIZE,
                                                         capacity=QUEUE_CAPACITY,
                                                         min_after_dequeue=int(QUEUE_CAPACITY / 2),
@@ -145,7 +150,10 @@ def input_pipeline(filenames):
         # reshape dense labels (frame by frame annotations)
         batch_dense_label = tf.reshape(batch_dense_label, [BATCH_SIZE*FRAMES_PER_VIDEO])
 
-        return batch_rgb, batch_label_sparse, batch_dense_label
+        # reshape clip labels (frame by frame annotations)
+        batch_clip_label = tf.reshape(batch_clip_label, [BATCH_SIZE*CLIPS_PER_VIDEO])
+
+        return batch_rgb, batch_label_sparse, batch_dense_label, batch_clip_label
 
 
 
