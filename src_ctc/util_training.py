@@ -46,38 +46,43 @@ def video_preprocessing_training_op(video_op):
 
         #### Take random crop of dimension CROP=(CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3)
         zero_tensor = tf.zeros(shape=[1], dtype=tf.int32)
-        col_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[0] - CROP[1]), dtype=tf.int32)
-        row_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[1] - CROP[2]), dtype=tf.int32)
+        #col_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[0] - CROP[1]), dtype=tf.int32)
+        #row_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[1] - CROP[2]), dtype=tf.int32)
+        col_crop_idx = tf.constant(int((IMAGE_SIZE[0] - CROP[1])/2), shape=[1], dtype=tf.int32)
+        row_crop_idx = tf.constant(int((IMAGE_SIZE[1] - CROP[2])/2), shape=[1], dtype=tf.int32)
         begin_crop = tf.squeeze(tf.stack([zero_tensor, col_crop_idx, row_crop_idx, zero_tensor]))
         processed_video = tf.slice(clip_op, begin=begin_crop, size=CROP)
 
         #### Random rotation of +- 15 deg
-        # angle = np.random.randint(low=-ROT_ANGLE, high=ROT_ANGLE)
         angle = tf.random_uniform(shape=[1],minval=-ROT_ANGLE, maxval=ROT_ANGLE, dtype=tf.float32)
         processed_video = tf.contrib.image.rotate(processed_video, angles=angle)
 
         #### Random scaling
-        # do this by taking a crop of random size and then resizing to the original shape
-        begin_col = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[1])), dtype=tf.int32)
-        begin_row = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[2])), dtype=tf.int32)
-        # get crop window size scaling_col, scaling_row
-        crop_col = tf.constant(CROP[1], dtype=tf.int32)
-        crop_row = tf.constant(CROP[2], dtype=tf.int32)
-        scaling_col = tf.subtract(crop_col, begin_col)
-        scaling_row = tf.subtract(crop_row, begin_row)
-        # do scaling by slicing and then resizing to orignal size
-        begin_scaling = tf.squeeze(tf.stack([zero_tensor, begin_col, begin_row, zero_tensor]))
-        size_scaling = tf.squeeze(tf.stack([clips_in_video, scaling_col, scaling_row, channels]))
-        scaling_crop = tf.slice(processed_video, begin=begin_scaling, size=size_scaling)
-        processed_video = tf.image.resize_images(scaling_crop, size=[CROP[1], CROP[2]])
-
-        # normalise single images
-        processed_video = tf.reshape(processed_video, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
-        mean, var = tf.nn.moments(processed_video, axes=[0,1,2])
-        processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
+        ## do this by taking a crop of random size and then resizing to the original shape
+        #begin_col = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[1])), dtype=tf.int32)
+        #begin_row = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[2])), dtype=tf.int32)
+        ## get crop window size scaling_col, scaling_row
+        #crop_col = tf.constant(CROP[1], dtype=tf.int32)
+        #crop_row = tf.constant(CROP[2], dtype=tf.int32)
+        #scaling_col = tf.subtract(crop_col, begin_col)
+        #scaling_row = tf.subtract(crop_row, begin_row)
+        ## do scaling by slicing and then resizing to orignal size
+        #begin_scaling = tf.squeeze(tf.stack([zero_tensor, begin_col, begin_row, zero_tensor]))
+        #size_scaling = tf.squeeze(tf.stack([clips_in_video, scaling_col, scaling_row, channels]))
+        #scaling_crop = tf.slice(processed_video, begin=begin_scaling, size=size_scaling)
+        #processed_video = tf.image.resize_images(scaling_crop, size=[CROP[1], CROP[2]])
+             
+        #rand = tf.random_uniform(minval=0, maxval=1, shape=[], dtype=tf.float32)
+        #const_prob = tf.constant(0.5, dtype=tf.float32)
+        #processed_video = tf.case([(tf.less(rand, const_prob), lambda :processed_video)], default=lambda : tf.reverse(processed_video, axis=[2]))
 
         # reshape to correct size for nework
         processed_video = tf.reshape(processed_video, [CLIPS_PER_VIDEO, FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
+        
+        # normalise single images
+        #processed_video = tf.reshape(processed_video, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
+        #mean, var = tf.nn.moments(processed_video, axes=[0,1,2,3])
+        #processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
 
     return processed_video
     
