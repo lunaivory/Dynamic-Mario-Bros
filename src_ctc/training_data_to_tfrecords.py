@@ -63,11 +63,11 @@ def get_data_training(path, data_type, write_path, sample_ids):
             mid_frame += [round((start_frame + end_frame) / 2)]
 
         # get entire video
-        user = sample.get_entire_user_video()
+        #user = sample.get_entire_user_video()
         vid = sample.get_entire_rgb_video()
-        mask = np.mean(user, axis=3) > 150
-        mask = mask.reshape((mask.shape + (1,)))
-        vid = vid*mask
+        #mask = np.mean(user, axis=3) > 150
+        #mask = mask.reshape((mask.shape + (1,)))
+        #vid = vid*mask
 
         '''Split it into videos of MAX_FRAMES (80 as in the paper) frames'''
         # padding = np.zeros(IMAGE_SIZE, dtype=np.uint8)

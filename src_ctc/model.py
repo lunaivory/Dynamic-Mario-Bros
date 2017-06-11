@@ -13,15 +13,15 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
     # TODO they dont mention any activations for the conv layers, to check
     with tf.name_scope("network"): 
         
-        #with tf.name_scope("norm_1"): 
-        #    input_layer_norm = tf.layers.batch_normalization(
-        #                              input_layer,
-        #                              axis=0,
-        #                              training=mode)
+        with tf.name_scope("norm_1"): 
+            input_layer_norm = tf.layers.batch_normalization(
+                                      input_layer,
+                                      axis=0,
+                                      training=mode)
         # Convolutional Layer #1
         with tf.name_scope("cnn1"):
             conv1 = tf.layers.conv3d(
-                inputs =input_layer,
+                inputs =input_layer_norm,
                 filters = 64,
                 kernel_size = [3, 3, 3],
                 padding = "same",
@@ -34,16 +34,16 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
         with tf.name_scope("pooling1"):
             pool1 = tf.layers.max_pooling3d(inputs=conv1, pool_size=[1, 2, 2], strides=[1,2,2], padding="same")
 
-        #with tf.name_scope("norm_9"):
-        #    pool1_norm = tf.layers.batch_normalization(
-        #                              pool1,
-        #                              axis=0,
-        #                              training=mode)
+        with tf.name_scope("norm_9"):
+            pool1_norm = tf.layers.batch_normalization(
+                                      pool1,
+                                      axis=0,
+                                      training=mode)
 
         # Convolutional Layer #2
         with tf.name_scope("cnn2"):
             conv2 = tf.layers.conv3d(
-                inputs =pool1,
+                inputs =pool1_norm,
                 filters = 128,
                 kernel_size = [3, 3, 3],
                 padding = "same",
@@ -56,16 +56,16 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
         with tf.name_scope("pooling2"):
             pool2 = tf.layers.max_pooling3d(inputs=conv2, pool_size=[2, 2, 2], strides=[2,2,2], padding="same")
 
-        #with tf.name_scope("norm_2"):
-        #    pool2_norm = tf.layers.batch_normalization(
-        #                              pool2,
-        #                              axis=0,
-        #                              training=mode)
+        with tf.name_scope("norm_2"):
+            pool2_norm = tf.layers.batch_normalization(
+                                      pool2,
+                                      axis=0,
+                                      training=mode)
 
         # Convolutional Layer #3
         with tf.name_scope("cnn3"):
             conv3 = tf.layers.conv3d(
-                inputs=pool2,
+                inputs=pool2_norm,
                 filters=256,
                 kernel_size=[3, 3, 3],
                 padding="same",
@@ -74,15 +74,15 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
                 #bias_regularizer=slim.l2_regularizer(weight_decay)
             )
         
-        #with tf.name_scope("norm_3"):
-        #    conv3_norm = tf.layers.batch_normalization(
-        #                              conv3,
-        #                              axis=0,
-        #                              training=mode)
+        with tf.name_scope("norm_3"):
+            conv3_norm = tf.layers.batch_normalization(
+                                      conv3,
+                                      axis=0,
+                                      training=mode)
         # Convolutional Layer #4
         with tf.name_scope("cnn4"):
             conv4 = tf.layers.conv3d(
-                inputs=conv3,
+                inputs=conv3_norm,
                 filters=256,
                 kernel_size=[3, 3, 3],
                 padding="same",
@@ -95,16 +95,16 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
         with tf.name_scope("pooling3"):
             pool3 = tf.layers.max_pooling3d(inputs=conv4, pool_size=[2, 2, 2], strides=[2,2,2], padding="same")
 
-        #with tf.name_scope("norm_4"):
-        #    pool3_norm = tf.layers.batch_normalization(
-        #                              pool3,
-        #                              axis=0,
-        #                              training=mode)
+        with tf.name_scope("norm_4"):
+            pool3_norm = tf.layers.batch_normalization(
+                                      pool3,
+                                      axis=0,
+                                      training=mode)
 
         # Convolutional Layer #5
         with tf.name_scope("cnn5"):
             conv5 = tf.layers.conv3d(
-                inputs=pool3,
+                inputs=pool3_norm,
                 filters=512,
                 kernel_size=[3, 3, 3],
                 padding="same",
@@ -113,16 +113,16 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
                 #bias_regularizer=slim.l2_regularizer(weight_decay)
             )
         
-        #with tf.name_scope("norm_5"):
-        #    conv5_norm = tf.layers.batch_normalization(
-        #                              conv5,
-        #                              axis=0,
-        #                              training=mode)
+        with tf.name_scope("norm_5"):
+            conv5_norm = tf.layers.batch_normalization(
+                                      conv5,
+                                      axis=0,
+                                      training=mode)
 
         # Convolutional Layer #6
         with tf.name_scope("cnn6"):
             conv6 = tf.layers.conv3d(
-                inputs=conv5,
+                inputs=conv5_norm,
                 filters=512,
                 kernel_size=[3, 3, 3],
                 padding="same",
@@ -135,16 +135,16 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
         with tf.name_scope("pooling4"):
             pool4 = tf.layers.max_pooling3d(inputs=conv6, pool_size=[2, 2, 2], strides=[2,2,2], padding="same")
 
-        #with tf.name_scope("norm_6"):
-        #    pool4_norm = tf.layers.batch_normalization(
-        #                              pool4,
-        #                              axis=0,
-        #                              training=mode)
+        with tf.name_scope("norm_6"):
+            pool4_norm = tf.layers.batch_normalization(
+                                      pool4,
+                                      axis=0,
+                                      training=mode)
 
         # Convolutional Layer #7
         with tf.name_scope("cnn7"):
             conv7 = tf.layers.conv3d(
-                inputs=pool4,
+                inputs=pool4_norm,
                 filters=512,
                 kernel_size=[3, 3, 3],
                 padding="same",
@@ -153,16 +153,16 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode):
                 #bias_regularizer=slim.l2_regularizer(weight_decay)
             )
         
-        #with tf.name_scope("norm_7"):
-        #    conv7_norm = tf.layers.batch_normalization(
-        #                              conv7,
-        #                              axis=0,
-        #                              training=mode)
+        with tf.name_scope("norm_7"):
+            conv7_norm = tf.layers.batch_normalization(
+                                      conv7,
+                                      axis=0,
+                                      training=mode)
 
         # Convolutional Layer #8
         with tf.name_scope("cnn8"):
             conv8 = tf.layers.conv3d(
-                inputs=conv7,
+                inputs=conv7_norm,
                 filters=512,
                 kernel_size=[3, 3, 3],
                 padding="same",

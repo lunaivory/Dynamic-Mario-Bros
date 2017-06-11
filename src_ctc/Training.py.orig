@@ -48,13 +48,10 @@ print("Writing to {}\n".format(FLAGS.model_dir))
 
 graph = tf.Graph()
 
-#load normalised class frequencies
-class_frequencies = 1/np.loadtxt('class_frequencies.csv')
-
 with graph.as_default():
     ''' set up placeholders '''
     # Training and validation placeholders
-    input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
+    input_samples_op, input_labels_op, input_dense_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
 
     # Pass True in when it is in the trainging mode
     mode = tf.placeholder(tf.bool, name='mode')
@@ -65,8 +62,6 @@ with graph.as_default():
 
     # Returns 'logits' layer, the top-most layer of the network
     logits = model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode)
-    #class_frequencies_op = tf.constant(class_frequencies, dtype=tf.float32)
-    #logits = tf.multiply(logits, class_frequencies_op)
 
 
     '''Set up Variables'''
@@ -80,22 +75,23 @@ with graph.as_default():
     # Loss calculations: cross-entropy
     with tf.name_scope('ctc_loss'):
         # Return : A 1-D float tensor of shape [1]
-        logits = tf.reshape(logits, shape=[-1,21])
-        #loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=input_clip_label_op, logits=logits))
-        loss = tf.reduce_mean(tf.losses.sparse_softmax_cross_entropy(labels=input_clip_label_op, logits=logits))
+<<<<<<< Updated upstream
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_dense_label_op, logits=logits))
         # loss = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
+=======
+        # loss = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
+        dense_labels_reshaped = tf.reshape(input_dense_label_op, shape=[BATCH_SIZE*CLIPS_PER_VIDEO, FRAMES_PER_CLIP])
+        
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=dense_labels_reshaped, logits=logits_tiled))
+>>>>>>> Stashed changes
 
     # Accuracy calculations
     with tf.name_scope('accuracy'):
-        logits = tf.reshape(logits, shape=[-1,21])
         predictions = tf.argmax(logits, 1, name='predictions')
-        predictions = tf.Print(predictions,[predictions], summarize=16)
-        input_clip_label_op = tf.Print(input_clip_label_op, [input_clip_label_op], summarize=16)
-
-        logits_softmax = tf.nn.softmax(logits)
-        #logits_expanded = tf.stack([tf.squeeze(tf.nn.softmax(logits)) for i in range(FRAMES_PER_CLIP)], axis=1)
-        #logits_expanded = tf.reshape(logits_expanded, [FRAMES_PER_VIDEO*BATCH_SIZE, NO_GESTURE])
-        correct_predictions = tf.nn.in_top_k(logits_softmax, input_clip_label_op, 1)
+        predictions = tf.Print(predictions,[predictions])
+        logits_expanded = tf.stack([tf.squeeze(tf.nn.softmax(logits)) for i in range(FRAMES_PER_CLIP)], axis=1)
+        logits_expanded = tf.reshape(logits_expanded, [FRAMES_PER_VIDEO*BATCH_SIZE, NO_GESTURE])
+        correct_predictions = tf.nn.in_top_k(logits_expanded, input_dense_label_op, 1)
         batch_accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
         num_correct_predictions = tf.reduce_sum(tf.cast(correct_predictions, tf.int32))
 
@@ -108,7 +104,7 @@ with graph.as_default():
         #optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
         #gradients, v = zip(*optimizer.compute_gradients(loss))
 
-        #clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1)
+        #clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
         #train_op = optimizer.apply_gradients(zip(clipped_gradients, v), global_step=global_step)
         train_op = optimizer.minimize(loss, global_step=global_step)
 
@@ -171,20 +167,20 @@ with tf.Session(graph=graph) as sess:
 
                 # Training
                 feed_dict = {mode: True}
-                request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
-                train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
+                request_output = [summaries_training, num_correct_predictions, logits_expanded, input_dense_label_op, loss, train_op]
+                train_summary, correct_predictions_training, predictions, true_labels, loss_training, _ = sess.run(
                     request_output, feed_dict=feed_dict)
-                
+
                 ### Update counters
-                counter_correct_predictions_training += correct_predictions_training
-                # counter_correct_predictions_training += jaccard_similarity_score(true_labels, np.argmax(predictions, axis=1))
+                # counter_correct_predictions_training += correct_predictions_training
+                counter_correct_predictions_training += jaccard_similarity_score(true_labels, np.argmax(predictions, axis=1))
                 counter_loss_training += loss_training
                 ### Write summary data
                 train_summary_writer.add_summary(train_summary, step)
 
                 # Print status message.
                 if (step % FLAGS.print_every_step) == 0:
-                    accuracy_avg_value_training = counter_correct_predictions_training / (FLAGS.print_every_step*BATCH_SIZE*CLIPS_PER_VIDEO)
+                    accuracy_avg_value_training = counter_correct_predictions_training / (FLAGS.print_every_step)
                     loss_avg_value_training = counter_loss_training / (FLAGS.print_every_step)
                     print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training))
                     # Reset counters
