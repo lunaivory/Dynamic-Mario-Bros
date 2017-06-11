@@ -46,6 +46,7 @@ def get_padding(video, gestures):
 
 
 def get_data_training(path, data_type, write_path, sample_ids):
+    class_frequencies = np.zeros(21)
     for sample_id in tqdm(sample_ids):
 
         '''Get ChaLearn Data reader'''
@@ -146,3 +147,9 @@ def get_data_training(path, data_type, write_path, sample_ids):
             tf_writer = tf.python_io.TFRecordWriter(filename, options=tf_write_option)
             tf_writer.write(sequence_example.SerializeToString())
             tf_writer.close()
+
+        for c in (np.asarray(clip_label).ravel()-1):
+            class_frequencies[c]+=1
+
+    np.savetxt('class_frequencies.csv', class_frequencies)
+

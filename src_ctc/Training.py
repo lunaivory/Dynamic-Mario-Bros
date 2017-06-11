@@ -48,6 +48,10 @@ print("Writing to {}\n".format(FLAGS.model_dir))
 
 graph = tf.Graph()
 
+#load normalised class frequencies
+class_frequencies = 1/np.loadtxt('class_frequencies.csv')
+class_frequencies /= np.sum(class_frequencies)
+
 with graph.as_default():
     ''' set up placeholders '''
     # Training and validation placeholders
@@ -62,6 +66,8 @@ with graph.as_default():
 
     # Returns 'logits' layer, the top-most layer of the network
     logits = model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode)
+    class_frequencies_op = tf.constant(class_frequencies, dtype=tf.float32)
+    logits = tf.mul(logits, class_frequencies_op)
 
 
     '''Set up Variables'''
