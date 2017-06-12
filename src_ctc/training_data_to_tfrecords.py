@@ -46,7 +46,6 @@ def get_padding(video, gestures):
 
 
 def get_data_training(path, data_type, write_path, sample_ids):
-    class_frequencies = np.zeros(21)
     for sample_id in tqdm(sample_ids):
 
         '''Get ChaLearn Data reader'''
@@ -80,42 +79,51 @@ def get_data_training(path, data_type, write_path, sample_ids):
         clip_label_video = []
 
         for f, lab, id in zip(mid_frame, labels, range(len(labels))):
-            start = f - 40
-            end = f + 40
+#            start = f - 40
+#            end = f + 40
+#
+#            label_padding_start = abs(start - gesture_list[id][1])
+#            label_padding_end = abs(gesture_list[id][2] - end)
+#            label_gesture = gesture_list[id][2] - gesture_list[id][1]
+#
+#            if start < 0:
+#                start_padding = -start
+#                start = 0
+#
+#            if end > num_of_frames:
+#                end_padding = end - num_of_frames
+#                end = num_of_frames
+#
+#            if (start < gesture_list[id - 1][2]) and (id > 0):
+#                start_padding = gesture_list[id - 1][2] - start
+#                start = gesture_list[id - 1][2]
+#
+#            if id < (len(labels) - 1):
+#                if (end > gesture_list[id + 1][1]):
+#                    end_padding = end - gesture_list[id + 1][1]
+#                    end = gesture_list[id + 1][1]
+            start = gesture_list[id][1]
+            end = gesture_list[id][2]
+            if (end-start > 80):
+                end = start+80
 
-            label_padding_start = abs(start - gesture_list[id][1])
-            label_padding_end = abs(gesture_list[id][2] - end)
-            label_gesture = gesture_list[id][2] - gesture_list[id][1]
-
-            if start < 0:
-                start_padding = -start
-                start = 0
-
-            if end > num_of_frames:
-                end_padding = end - num_of_frames
-                end = num_of_frames
-
-            if (start < gesture_list[id - 1][2]) and (id > 0):
-                start_padding = gesture_list[id - 1][2] - start
-                start = gesture_list[id - 1][2]
-
-            if id < (len(labels) - 1):
-                if (end > gesture_list[id + 1][1]):
-                    end_padding = end - gesture_list[id + 1][1]
-                    end = gesture_list[id + 1][1]
-
-            single_video = [padding[:start_padding] + list(vid[start:end]) + padding[:end_padding]]
+            times = int(80/(end-start))
+            resid = int(80 - (end-start) * times)
+            single_video = list(vid[start:end])*times + list(vid[start:start+resid])
+#            single_video = [padding[:start_padding] + list(vid[start:end]) + padding[:end_padding]]
             single_video = np.asarray(single_video, dtype=np.uint8).reshape((int(FRAMES_PER_VIDEO / FRAMES_PER_CLIP),
                                                                              FRAMES_PER_CLIP) + (IMAGE_SIZE))
 
             # get frame by frame labels to calculate accuracy during training and Jaccard score for val/test
-            dense_lab = label_padding_start * [NO_GESTURE] + label_gesture * [lab] + label_padding_end * [NO_GESTURE]
+#            dense_lab = label_padding_start * [NO_GESTURE] + label_gesture * [lab] + label_padding_end * [NO_GESTURE]
+            dense_lab = [lab] * 80
             for i in range(0,FRAMES_PER_VIDEO, FRAMES_PER_CLIP):
                 extracted_labels = np.asarray(dense_lab[i: i+FRAMES_PER_CLIP]) == lab
-                if np.sum(extracted_labels) < 4:
-                    clip_label_video += [NO_GESTURE]
-                else:
-                    clip_label_video += [lab]
+                clip_label_video += [lab]
+#                if np.sum(extracted_labels) < 4:
+#                    clip_label_video += [NO_GESTURE]
+#                else:
+#                    clip_label_video += [lab]
 
             videos += [single_video]
             dense_label += [dense_lab]
@@ -147,9 +155,3 @@ def get_data_training(path, data_type, write_path, sample_ids):
             tf_writer = tf.python_io.TFRecordWriter(filename, options=tf_write_option)
             tf_writer.write(sequence_example.SerializeToString())
             tf_writer.close()
-
-        for c in (np.asarray(clip_label).ravel()-1):
-            class_frequencies[c]+=1
-
-    np.savetxt('class_frequencies.csv', class_frequencies)
-
