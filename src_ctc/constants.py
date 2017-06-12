@@ -24,6 +24,7 @@ ROT_ANGLE = 0 #0.083  #+-15deg, it has to be rads
 
 '''Self-defined gesture labels'''
 NO_GESTURE = 21
+NUM_OF_NO_GESTURE_CLIPS = 3
 
 '''Training parameters'''
 DROPOUT_RATE =0.5 #0.75
