@@ -2,6 +2,7 @@
 # 1. Instead of [0:5][5:10] as frames we can do [0:5][1:6][2:7]...
 # 2. Shuffle TRAIN_ID, VALIDATION_ID, etc.
 
+#from training_data_to_tfrecords import get_data_training
 from training_data_to_tfrecords_3dcnn import get_data_training
 from val_data_to_tfrecords import get_data_val
 from test_data_to_tfrecords import get_data_test
