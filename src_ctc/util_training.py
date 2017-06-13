@@ -81,8 +81,8 @@ def video_preprocessing_training_op(video_op):
         
         # normalise single images
         # processed_video = tf.reshape(processed_video, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
-        mean, var = tf.nn.moments(processed_video, axes=[0,1,2,3])
-        processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
+        #mean, var = tf.nn.moments(processed_video, axes=[0,1,2,3])
+        #processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
 
     return processed_video
     
