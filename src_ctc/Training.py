@@ -144,7 +144,7 @@ with tf.Session(graph=graph) as sess:
     valid_summary_writer = tf.summary.FileWriter(valid_summary_dir, sess.graph)
 
     # Create a saver for writing training checkpoints.
-    saver = tf.train.Saver(max_to_keep=2)
+    saver = tf.train.Saver(max_to_keep=1)
 
 
     '''###############################################'''
@@ -185,7 +185,7 @@ with tf.Session(graph=graph) as sess:
                 if (step % FLAGS.print_every_step) == 0:
                     accuracy_avg_value_training = counter_correct_predictions_training / (FLAGS.print_every_step*BATCH_SIZE*CLIPS_PER_VIDEO)
                     loss_avg_value_training = counter_loss_training / (FLAGS.print_every_step)
-                    print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training))
+                    print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training), flush=True)
                     # Reset counters
                     counter_correct_predictions_training = 0.0
                     counter_loss_training = 0.0

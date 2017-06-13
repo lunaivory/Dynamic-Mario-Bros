@@ -35,7 +35,7 @@ def get_no_gesture(gestures):
         # sample an interval of no-gestures until you get one larger than 8 clips
         # add extra frames to make sure we get a "true" no gesture and not a noisy one right
         # after a gesture was completed
-        extra_frames = np.random.randint(low=0, high=30)
+        extra_frames = np.random.randint(low=0, high=8)
 
         while time_diff[selected_interval] < (FRAMES_PER_CLIP + extra_frames) :
             selected_interval = np.random.randint(low=0, high=time_diff.shape[0])
@@ -77,11 +77,11 @@ def get_data_training(path, data_type, write_path, sample_ids):
         ranges_lengths = np.asarray(ranges_lengths)
 
         # get entire video
-        # user = sample.get_entire_user_video()
+        user = sample.get_entire_user_video()
         vid = sample.get_entire_rgb_video()
-        # mask = np.mean(user, axis=3) > 150
-        # mask = mask.reshape((mask.shape + (1,)))
-        # vid = vid*mask
+        mask = np.mean(user, axis=3) > 150
+        mask = mask.reshape((mask.shape + (1,)))
+        vid = vid*mask
 
         for lab, id in zip(labels, range(len(labels))):
             for start, id_2 in zip(ranges[id], range(ranges_lengths[id])):

@@ -3,7 +3,7 @@
 '''#####################'''
 
 # dont use sample 091 since there is a mistake with the labels
-TRAIN_ID = range(1,5)         # Raw file format : Sample0001.zip - Sample0470.zip
+TRAIN_ID = range(360,470)         # Raw file format : Sample0001.zip - Sample0470.zip
 VALIDATION_ID = range(475,478)  # Raw file format : Sample0471.zip - Sample0700.zip
 TEST_ID = range(701,702)        # Raw file format : Sample0701.zip - Sample0941.zip
 
@@ -28,7 +28,7 @@ NUM_OF_NO_GESTURE_CLIPS = 3
 
 '''Training parameters'''
 DROPOUT_RATE =0.5 #0.75
-LEARNING_RATE = 3e-3 #3e-4
+LEARNING_RATE = 1e-4 #3e-4
 BATCH_SIZE = 40 # 5 gestures per batch
 NUM_EPOCHS = 100
 PRINT_EVERY_STEP = 5 #200
