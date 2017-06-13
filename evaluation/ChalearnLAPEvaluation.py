@@ -25,20 +25,20 @@ def gesture_overlap_csv(csvpathgt, csvpathpred, seqlenght):
     # Get the list of gestures from the ground truth and frame activation
     gtGestures = []
     binvec_gt = numpy.zeros((maxGestures, seqlenght))
-    with open(csvpathgt, 'rb') as csvfilegt:
+    with open(csvpathgt, 'r') as csvfilegt:
         csvgt = csv.reader(csvfilegt)
         for row in csvgt:
-            binvec_gt[int(row[1])-1, int(row[2])-1:int(row[3])-1] = 1
-            gtGestures.append(int(row[1]))
+            binvec_gt[int(row[0])-1, int(row[1])-1:int(row[2])-1] = 1
+            gtGestures.append(int(row[0]))
 
     # Get the list of gestures from prediction and frame activation
     predGestures = []
-    binvec_pred = numpy.zeros(maxGestures, seqlenght)
-    with open(csvpathpred, 'rb') as csvfilepred:
+    binvec_pred = numpy.zeros((maxGestures, seqlenght))
+    with open(csvpathpred, 'r') as csvfilepred:
         csvpred = csv.reader(csvfilepred)
         for row in csvpred:
-            binvec_pred[int(row[1])-1, int(row[2])-1:int(row[3])-1] = 1
-            predGestures.append(int(row[1]))
+            binvec_pred[int(row[0])-1, int(row[1])-1:int(row[2])-1] = 1
+            predGestures.append(int(row[0]))
 
     # Get the list of gestures without repetitions for ground truth and predicton
     gtGestures = numpy.unique(gtGestures)
@@ -80,7 +80,7 @@ def exportGT_Gesture(dataPath, outputPath):
     # For each sample on the GT, search the given prediction
     for sample in samplesList:
         # Build paths for sample
-    	sampleFile = os.path.join(dataPath, sample)
+        sampleFile = os.path.join(dataPath, sample)
 
         # Check that is a ZIP file
         if not os.path.isfile(sampleFile) or not sample.lower().endswith(".zip"):
@@ -148,10 +148,10 @@ def evalGesture(prediction_dir,truth_dir):
         sampleID=re.sub('\_labels.csv$', '', gold)
         labelsFile = os.path.join(truth_dir, sampleID + "_labels.csv")
         dataFile = os.path.join(truth_dir, sampleID + "_data.csv")
-    	predFile = os.path.join(prediction_dir, sampleID + "_prediction.csv")
+        predFile = os.path.join(prediction_dir, sampleID + "_prediction.csv")
 
         # Get the number of frames for this sample
-        with open(dataFile, 'rb') as csvfile:
+        with open(dataFile, 'r') as csvfile:
             filereader = csv.reader(csvfile, delimiter=',')
             for row in filereader:
                 numFrames=int(row[0])
