@@ -35,9 +35,9 @@ def get_no_gesture(gestures):
         # sample an interval of no-gestures until you get one larger than 8 clips
         # add extra frames to make sure we get a "true" no gesture and not a noisy one right
         # after a gesture was completed
-        extra_frames = np.random.randint(low=0, high=8)
+        extra_frames = np.random.randint(low=0, high=4)
 
-        while time_diff[selected_interval] < (FRAMES_PER_CLIP + extra_frames) :
+        while time_diff[selected_interval] < (FRAMES_PER_CLIP_PP + extra_frames) :
             selected_interval = np.random.randint(low=0, high=time_diff.shape[0])
 
         time_ind = selected_interval
@@ -67,7 +67,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
         for gesture_id, start_frame, end_frame in gesture_list:
             dense_label[start_frame:end_frame] = gesture_id
 
-        range = np.arange(0, num_of_frames, FRAMES_PER_VIDEO)[:-1]
+        range = np.arange(0, num_of_frames, FRAMES_PER_CLIP_PP)[:-1]
 
         # no_gesture_ranges = get_no_gesture(gesture_list)
         # ranges_lengths.append(NUM_OF_NO_GESTURE_CLIPS)
@@ -83,10 +83,11 @@ def get_data_training(path, data_type, write_path, sample_ids):
 
         id = 0
         for rang in range:
-            clip = vid[rang:(rang+FRAMES_PER_VIDEO)]
-            clip_dense_label = dense_label[rang:(rang+FRAMES_PER_VIDEO)]
+            clip = vid[rang:(rang+FRAMES_PER_CLIP_PP)]
+            clip_dense_label = dense_label[rang:(rang+FRAMES_PER_CLIP_PP)]
             check = np.sum(clip_dense_label != NO_GESTURE)
 
+            # if most of the frames belong to a gesture label then store the clip under than label
             if check > 5:
                 lab = clip_dense_label[clip_dense_label != NO_GESTURE][0]
 
@@ -111,7 +112,8 @@ def get_data_training(path, data_type, write_path, sample_ids):
                 tf_writer.close()
                 id+=1
 
-            elif check != 0:
+            #get with prob 30% also some noisy no-gesture frames. Probability is 30% to avoid class imbalance
+            elif (check != 0) and (np.random.uniform() < 0.3):
                 lab = NO_GESTURE
 
                 featureLists = tf.train.FeatureLists(feature_list={
@@ -135,10 +137,10 @@ def get_data_training(path, data_type, write_path, sample_ids):
                 tf_writer.close()
                 id += 1
 
-        #also put some pure no gesture
+        #also put some non-noisy no gesture
         no_gesture_ranges = get_no_gesture(gesture_list)
         for rang in no_gesture_ranges:
-            clip = vid[rang:(rang + FRAMES_PER_VIDEO)]
+            clip = vid[rang:(rang + FRAMES_PER_CLIP_PP)]
             lab = NO_GESTURE
 
             featureLists = tf.train.FeatureLists(feature_list={

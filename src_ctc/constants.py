@@ -14,6 +14,7 @@ RAW_DATA_PATH = '../data_pp/'
 TFRecord_DATA_PATH = '../tf-data/'
 
 # use clips of 80 frames like they did in the paper
+FRAMES_PER_CLIP_PP = 14
 FRAMES_PER_CLIP = 8 
 FRAMES_PER_VIDEO = 8 #80
 CLIPS_PER_VIDEO = int(FRAMES_PER_VIDEO / FRAMES_PER_CLIP)
@@ -21,6 +22,7 @@ CLIPS_PER_VIDEO = int(FRAMES_PER_VIDEO / FRAMES_PER_CLIP)
 """preprocesssing parameters"""
 CROP = (CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3) # 1 based crop shape for tf.slice
 ROT_ANGLE = 0 #0.083  #+-15deg, it has to be rads
+JITTERING = (FRAMES_PER_CLIP,) + IMAGE_SIZE
 
 '''Self-defined gesture labels'''
 NO_GESTURE = 21

@@ -42,16 +42,22 @@ def video_preprocessing_training_op(video_op):
 
         # Reshape for easier preprocessing
         video_op = tf.cast(video_op, dtype=tf.float32)
-        clip_op = tf.reshape(video_op, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP] + list(IMAGE_SIZE))
+        clip_op = tf.reshape(video_op, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP_PP] + list(IMAGE_SIZE))
+
+        # +- 3frames of jittering
+        zero_tensor = tf.zeros(shape=[1], dtype=tf.int32)
+        jittering = tf.random_uniform(shape=[1], minval=0, maxval=6, dtype=tf.int32)
+        begin_jittering = tf.squeeze(tf.stack([jittering, zero_tensor, zero_tensor, zero_tensor]))
+        processed_video_jittering = tf.slice(clip_op, begin=begin_jittering, size=JITTERING)
 
         #### Take random crop of dimension CROP=(CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3)
-        zero_tensor = tf.zeros(shape=[1], dtype=tf.int32)
+
         #col_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[0] - CROP[1]), dtype=tf.int32)
         #row_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[1] - CROP[2]), dtype=tf.int32)
         col_crop_idx = tf.constant(int((IMAGE_SIZE[0] - CROP[1])/2), shape=[1], dtype=tf.int32)
         row_crop_idx = tf.constant(int((IMAGE_SIZE[1] - CROP[2])/2), shape=[1], dtype=tf.int32)
         begin_crop = tf.squeeze(tf.stack([zero_tensor, col_crop_idx, row_crop_idx, zero_tensor]))
-        processed_video = tf.slice(clip_op, begin=begin_crop, size=CROP)
+        processed_video = tf.slice(processed_video_jittering, begin=begin_crop, size=CROP)
 
         #### Random rotation of +- 15 deg
         angle = tf.random_uniform(shape=[1],minval=-ROT_ANGLE, maxval=ROT_ANGLE, dtype=tf.float32)

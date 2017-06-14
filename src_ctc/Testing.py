@@ -39,10 +39,10 @@ def exportPredictions(output_csv_file_path, seq_gestures, seq_paddings):
 
 
 # LOG_DIR = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
-LOG_DIR = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497374537'
-META_GRAPH_FILE = 'model-8500.meta'
+LOG_DIR = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497450063'
+META_GRAPH_FILE = 'model-1500.meta'
 # MODEL_CP_PATH = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
-MODEL_CP_PATH = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497374537'
+MODEL_CP_PATH = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497450063'
 OUTPUT_PATH = '../evaluation/prediction/'''
 
 tf.flags.DEFINE_string('log_dir', LOG_DIR, 'Checkpoint directory')
@@ -103,7 +103,7 @@ with tf.Session(config=tf.ConfigProto(device_count={'GPU':0})) as sess:
             feed_dict = {mode:False, input_samples_op:batch_clips}
             _, logs = sess.run([predictions, logits_soft], feed_dict = feed_dict) #[0].tolist()
             preds = np.argmax(logs, axis=1)
-            preds[np.max(logs, axis=1) < 0.5] = NO_GESTURE - 1
+            preds[np.max(logs, axis=1) < 0.8] = NO_GESTURE - 1
             results += preds.tolist()
 
         #print (results)
@@ -138,10 +138,10 @@ with tf.Session(config=tf.ConfigProto(device_count={'GPU':0})) as sess:
 
         input("Press Enter to continue...")
 
-        # fout = open('%s/Sample%04d_prediction.csv' % (OUTPUT_PATH, sample_id), 'w')
-        # for row in gestures:
-        #     fout.write(repr(int(row[0])) + ',' + repr(int(row[1])) + ',' + repr(int(row[2])))
-        # fout.close()
+        fout = open('%s/Sample%04d_prediction.csv' % (OUTPUT_PATH, sample_id), 'w')
+        for row in gestures:
+            fout.write(repr(int(row[0])) + ',' + repr(int(row[1])) + ',' + repr(int(row[2])) + '\n')
+        fout.close()
 
 
 
