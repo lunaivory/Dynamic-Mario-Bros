@@ -17,7 +17,7 @@ import util_testing
 from constants import *
 from sklearn.metrics import jaccard_similarity_score
 
-def exportPredictions(prediction_list, output_csv_file_path, seq_gestures, seq_paddings):
+def exportPredictions(output_csv_file_path, seq_gestures, seq_paddings):
     """ Export the given prediction to the csv file in the given path """
     ''' Given a list of gestures of clips '''
     (g,l,r) = (-1,-1,-1)
@@ -38,9 +38,11 @@ def exportPredictions(prediction_list, output_csv_file_path, seq_gestures, seq_p
 
 
 
-LOG_DIR = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
-META_GRAPH_FILE = 'model-6500.meta'
-MODEL_CP_PATH = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
+# LOG_DIR = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
+LOG_DIR = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497374537'
+META_GRAPH_FILE = 'model-8500.meta'
+# MODEL_CP_PATH = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
+MODEL_CP_PATH = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497374537'
 OUTPUT_PATH = '../evaluation/prediction/'''
 
 tf.flags.DEFINE_string('log_dir', LOG_DIR, 'Checkpoint directory')
@@ -57,7 +59,9 @@ for attr, value in sorted(FLAGS.__flags.items()):
 
 prev_sample = -1
 prev_gesture= -1
-with tf.Session() as sess:
+
+with tf.Session(config=tf.ConfigProto(device_count={'GPU':0})) as sess:
+#with tf.Session() as sess:
     saver = tf.train.import_meta_graph(os.path.join(FLAGS.log_dir, FLAGS.meta_graph_file))
     saver.restore(sess, tf.train.latest_checkpoint(FLAGS.log_dir))
 
@@ -65,8 +69,11 @@ with tf.Session() as sess:
     input_samples_op = tf.get_collection('input_samples_op')[0]
     mode = tf.get_collection('mode')[0]
 
+    logits = tf.get_default_graph().get_tensor_by_name("accuracy/Reshape:0")
+    logits_soft = tf.nn.softmax(logits)
+
     for sample_id in tqdm(TEST_ID):
-        #print('========== sample %d ===========' % sample_id)
+        print('========== sample %d ===========' % sample_id)
         sample = GestureSample('%s/%s/Sample%04d.zip' % (RAW_DATA_PATH, 'Test', sample_id))
 
         num_of_frames = sample.getNumFrames()
@@ -79,7 +86,7 @@ with tf.Session() as sess:
         vid = vid*mask
 
         results = []
-        for clip_range in range(num_of_clip_batch):
+        for clip_range in range(int(num_of_clip_batch)):
             start = clip_range * FRAMES_PER_CLIP * BATCH_SIZE
             end = (clip_range + 1) * FRAMES_PER_CLIP * BATCH_SIZE
             end_padding = 0
@@ -94,8 +101,10 @@ with tf.Session() as sess:
             batch_clips = np.asarray(batch_clips, dtype=np.uint8).reshape((BATCH_SIZE, FRAMES_PER_CLIP) + (CROP[1], CROP[2], CROP[3]))
 
             feed_dict = {mode:False, input_samples_op:batch_clips}
-            results += sess.run([predictions], feed_dict = feed_dict)[0].tolist()
-
+            _, logs = sess.run([predictions, logits_soft], feed_dict = feed_dict) #[0].tolist()
+            preds = np.argmax(logs, axis=1)
+            preds[np.max(logs, axis=1) < 0.5] = NO_GESTURE - 1
+            results += preds.tolist()
 
         #print (results)
         ''' write into files '''
@@ -121,12 +130,18 @@ with tf.Session() as sess:
                 if (i * FRAMES_PER_CLIP + 1 > num_of_frames):
                     break
 
-        #print(results)
-        #print(gestures)
-        fout = open('%s/Sample%04d_prediction.csv' % (OUTPUT_PATH, sample_id), 'w')
-        for row in gestures:
-            fout.write(repr(int(row[0])) + ',' + repr(int(row[1])) + ',' + repr(int(row[2])))
-        fout.close()
+
+        print('results')
+        print(results)
+        print('gestures')
+        print(gestures)
+
+        input("Press Enter to continue...")
+
+        # fout = open('%s/Sample%04d_prediction.csv' % (OUTPUT_PATH, sample_id), 'w')
+        # for row in gestures:
+        #     fout.write(repr(int(row[0])) + ',' + repr(int(row[1])) + ',' + repr(int(row[2])))
+        # fout.close()
 
 
 

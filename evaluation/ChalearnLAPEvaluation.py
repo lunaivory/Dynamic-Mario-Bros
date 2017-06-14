@@ -134,7 +134,7 @@ def evalGesture(prediction_dir,truth_dir):
     worseVal=10000
 
     # Get the list of samples from ground truth
-    gold_list = os.listdir(truth_dir)
+    gold_list = sorted(os.listdir(truth_dir))
 
     # For each sample on the GT, search the given prediction
     numSamples=0.0;
