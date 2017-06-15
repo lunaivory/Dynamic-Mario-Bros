@@ -3,32 +3,6 @@ import numpy as np
 import tensorflow as tf
 from constants import *
 
-# def _int64_feature(value):
-#     """Wrapper for inserting an int64 Feature into a SequenceExample proto."""
-#     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-#
-# def _float_feature(value):
-#     """Wrapper for inserting an int64 Feature into a SequenceExample proto."""
-#     return tf.train.Feature(int64_list=tf.train.FloatList(value=[value]))
-#
-# def _bytes_feature(value):
-#     """Wrapper for inserting a bytes Feature into a SequenceExample proto."""
-#     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value.tobytes()]))
-#
-# def _int64_feature_list(values):
-#     """Wrapper for inserting an int64 FeatureList into a SequenceExample proto."""
-#     return tf.train.FeatureList(feature=[_int64_feature(v) for v in values])
-#
-# def _bytes_feature_list(values):
-#     """Wrapper for inserting a bytes FeatureList into a SequenceExample proto."""
-#     return tf.train.FeatureList(feature=[_bytes_feature(v) for v in values])
-#
-# def _float_feature_list(values):
-#     """Wrapper for inserting a bytes FeatureList into a SequenceExample proto."""
-#     return tf.train.FeatureList(feature=[_float_feature(v) for v in values])
-
-
-
 '''######################################################'''
 '''#                   Input Pipeline                   #'''
 '''######################################################'''
@@ -42,12 +16,13 @@ def video_preprocessing_training_op(video_op):
 
         # Reshape for easier preprocessing
         video_op = tf.cast(video_op, dtype=tf.float32)
-        clip_op = tf.reshape(video_op, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP_PP] + list(IMAGE_SIZE))
+        clip_op = tf.reshape(video_op, [-1] + list(IMAGE_SIZE))
 
-        # +- 3frames of jittering
+        # take random crop of 320 frames from video
         zero_tensor = tf.zeros(shape=[1], dtype=tf.int32)
-        jittering = tf.random_uniform(shape=[1], minval=0, maxval=6, dtype=tf.int32)
-        begin_jittering = tf.squeeze(tf.stack([jittering, zero_tensor, zero_tensor, zero_tensor]))
+        jittering = tf.random_uniform(shape=[1], minval=0, maxval=int((FRAMES_PER_VIDEO_PP-FRAMES_PER_VIDEO)/8), dtype=tf.int32)
+        jittering_dense = tf.multiply(jittering, 8)
+        begin_jittering = tf.squeeze(tf.stack([jittering_dense, zero_tensor, zero_tensor, zero_tensor]))
         processed_video_jittering = tf.slice(clip_op, begin=begin_jittering, size=JITTERING)
 
         #### Take random crop of dimension CROP=(CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3)
@@ -90,7 +65,7 @@ def video_preprocessing_training_op(video_op):
         #mean, var = tf.nn.moments(processed_video, axes=[0,1,2,3])
         #processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
 
-    return processed_video
+    return processed_video, jittering
     
 def read_and_decode(filename_queue):
     readerOptions = tf.python_io.TFRecordOptions(compression_type=tf.python_io.TFRecordCompressionType.GZIP)
@@ -113,7 +88,7 @@ def read_and_decode(filename_queue):
         # decode video and apply preprocessing to entire video
         seq_rgb = tf.decode_raw(features_encoded['rgbs'], tf.uint8)
         # seq_rgb_pp = video_preprocessing_training_op(seq_rgb)
-        seq_rgb_pp = video_preprocessing_training_op(seq_rgb)
+        seq_rgb_pp, jittering = video_preprocessing_training_op(seq_rgb)
 
         # decode label and reshape it correct size for shuffle_batch
         seq_label = tf.decode_raw(features_encoded['label'], tf.int32)
@@ -122,13 +97,16 @@ def read_and_decode(filename_queue):
 
         # get dense labels to calculate accuracy
         seq_label_dense = tf.decode_raw(features_encoded['dense_label'], tf.int32)
-        seq_label_dense = tf.reshape(seq_label_dense, [FRAMES_PER_VIDEO])
+        seq_label_dense = tf.reshape(seq_label_dense, [-1])
+        jittering_dense = tf.multiply(jittering, 8)
+        seq_label_dense_slice = tf.slice(seq_label_dense, begin=jittering_dense, size=[FRAMES_PER_VIDEO])
 
         # get per clip labels to train 3dcnn
         seq_label_clip = tf.decode_raw(features_encoded['clip_label'], tf.int32)
-        seq_label_clip = tf.reshape(seq_label_clip, [CLIPS_PER_VIDEO])
+        seq_label_clip = tf.reshape(seq_label_clip, [-1])
+        seq_label_clip_slice = tf.slice(seq_label_clip, begin=jittering, size=[int(FRAMES_PER_VIDEO/8)])
 
-        return seq_rgb_pp, seq_label, seq_label_dense, seq_label_clip
+        return seq_rgb_pp, seq_label, seq_label_dense_slice, seq_label_clip_slice
 
 def input_pipeline(filenames):
     with tf.name_scope('input_pipeline_training'):

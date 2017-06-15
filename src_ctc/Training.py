@@ -6,7 +6,6 @@ import time as time
 import os
 
 import util_training
-import util_training_ctc
 
 '''####################################################'''
 '''#                Self-defined library              #'''
@@ -55,26 +54,17 @@ class_frequencies = 1/np.loadtxt('class_frequencies.csv')
 with graph.as_default():
     ''' set up placeholders '''
     # Training and validation placeholders
-    input_samples_op_3dcnn, input_labels_op_3dcnn, input_dense_label_op_3dcnn, input_clip_label_op_3dcnn = util_training.input_pipeline(TRAIN_FILENAMES)
-    
-    input_samples_op_ctc, input_labels_op_ctc, input_dense_label_op_ctc, input_clip_label_op_ctc = util_training_ctc.input_pipeline(TRAIN_FILENAMES)
+    input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
 
     # Pass True in when it is in the trainging mode
     mode = tf.placeholder(tf.bool, name='mode')
-    net_type = tf.placeholder(tf.bool, name='net_type')
-    
-    input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op= tf.cond(
-        net_type,
-        lambda : (input_samples_op_3dcnn, input_labels_op_3dcnn, input_dense_label_op_3dcnn, input_clip_label_op_3dcnn),
-        lambda : (input_samples_op_ctc, input_labels_op_ctc, input_dense_label_op_ctc, input_clip_label_op_ctc)
-    )
 
     loss_avg = tf.placeholder(tf.float32, name='loss_avg')
     accuracy_avg = tf.placeholder(tf.float32, name='accuracy_avg')
     # learning_rate = tf.placeholder(tf.float32, name='learning_rate')
 
     # Returns 'logits' layer, the top-most layer of the network
-    logits_3dcnn, logits_ctc = model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode, net_type)
+    logits = model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode)
     '''Set up Variables'''
     # Count number of samples fed and correct predictions made.
     # Attached to a summary op
@@ -86,17 +76,17 @@ with graph.as_default():
     # Loss calculations: cross-entropy
     with tf.name_scope('ctc_loss'):
         # Return : A 1-D float tensor of shape [1]
-        loss_3dcnn = tf.reduce_mean(tf.losses.sparse_softmax_cross_entropy(labels=input_clip_label_op, logits=logits_3dcnn))
-        loss_ctc = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits_ctc, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
+        loss = tf.reduce_mean(tf.losses.sparse_softmax_cross_entropy(labels=input_clip_label_op, logits=tf.squeeze(logits)))
+        #loss_ctc = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits_ctc, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
 
     # Accuracy calculations
     with tf.name_scope('accuracy'):
-        logits = tf.reshape(logits_3dcnn, shape=[-1,21])
-        predictions = tf.argmax(logits_3dcnn, 1, name='predictions')
+        logits = tf.reshape(logits, shape=[-1,21])
+        predictions = tf.argmax(logits, 1, name='predictions')
         predictions = tf.Print(predictions,[predictions], summarize=16)
         input_clip_label_op = tf.Print(input_clip_label_op, [input_clip_label_op], summarize=16)
 
-        logits_softmax = tf.nn.softmax(logits_3dcnn)
+        logits_softmax = tf.nn.softmax(logits)
         #logits_expanded = tf.stack([tf.squeeze(tf.nn.softmax(logits)) for i in range(FRAMES_PER_CLIP)], axis=1)
         #logits_expanded = tf.reshape(logits_expanded, [FRAMES_PER_VIDEO*BATCH_SIZE, NO_GESTURE])
         correct_predictions = tf.nn.in_top_k(logits_softmax, input_clip_label_op, 1)
@@ -108,117 +98,107 @@ with graph.as_default():
     with tf.name_scope('train'):
         learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step,
                                 decay_steps = 3 * FLAGS.epoch_length, decay_rate=0.5, staircase=True)
-        optimizer_3dcnn = tf.train.AdamOptimizer(FLAGS.learning_rate)
-        optimizer_ctc = tf.train.AdamOptimizer(FLAGS.learning_rate)
+        optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
         #optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
-        gradients, v = zip(*optimizer_ctc.compute_gradients(loss_ctc))
-
-        clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1)
-        train_op_ctc = optimizer_ctc.apply_gradients(zip(clipped_gradients, v), global_step=global_step)
-        train_op_3dcnn = optimizer_3dcnn.minimize(loss_3dcnn, global_step=global_step)
-        
-        train_op = tf.cond(
-                           net_type,
-                           lambda : train_op_3dcnn,
-                           lambda : train_op_ctc
-                          )
+        # gradients, v = zip(*optimizer_ctc.compute_gradients(loss_ctc))
+        #
+        # clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
+        # train_op = optimizer.apply_gradients(zip(clipped_gradients, v), global_step=global_step)
+        train_op = optimizer.minimize(loss, global_step=global_step)
 
     tf.add_to_collection('predictions', predictions)
     tf.add_to_collection('input_samples_op', input_samples_op)
     tf.add_to_collection('mode', mode)
 
-with tf.Session(graph=graph) as sess:
-    ''' Create Session '''
-    init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-    sess.run(init_op)
+    #with tf.Session(graph=graph) as sess:
+    with tf.Session(config=tf.ConfigProto(device_count={'GPU': 0})) as sess:
+        ''' Create Session '''
+        init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+        sess.run(init_op)
 
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
-    ''' Summary record '''
-    # Crate summary op for monitoring the training. Each summary op annotates a node in the computational graph
-    # and collects data from it.
-    summary_train_loss = tf.summary.scalar('loss_3dcnn', tf.reduce_mean(loss_3dcnn))
-    summary_train_acc = tf.summary.scalar('accuracy_training', batch_accuracy)
-    summary_avg_accuracy = tf.summary.scalar('accuracy_avg', accuracy_avg)
-    summary_avg_loss = tf.summary.scalar('loss_avg', loss_avg)
-    summary_learning_rate = tf.summary.scalar('learning_rate', FLAGS.learning_rate)
+        ''' Summary record '''
+        # Crate summary op for monitoring the training. Each summary op annotates a node in the computational graph
+        # and collects data from it.
+        summary_train_loss = tf.summary.scalar('loss', loss)
+        summary_train_acc = tf.summary.scalar('accuracy_training', batch_accuracy)
+        summary_avg_accuracy = tf.summary.scalar('accuracy_avg', accuracy_avg)
+        summary_avg_loss = tf.summary.scalar('loss_avg', loss_avg)
+        summary_learning_rate = tf.summary.scalar('learning_rate', FLAGS.learning_rate)
 
-    # Group summaries.
-    summaries_training = tf.summary.merge([summary_train_loss, summary_train_acc, summary_learning_rate])
-    summaries_evaluation = tf.summary.merge([summary_avg_accuracy, summary_avg_loss])
+        # Group summaries.
+        summaries_training = tf.summary.merge([summary_train_loss, summary_train_acc, summary_learning_rate])
+        summaries_evaluation = tf.summary.merge([summary_avg_accuracy, summary_avg_loss])
 
-    # Register summary ops.
-    train_summary_dir = os.path.join(FLAGS.model_dir, "summary", "train")
-    train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
+        # Register summary ops.
+        train_summary_dir = os.path.join(FLAGS.model_dir, "summary", "train")
+        train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
 
-    valid_summary_dir = os.path.join(FLAGS.model_dir, "summary", "validation")
-    valid_summary_writer = tf.summary.FileWriter(valid_summary_dir, sess.graph)
+        valid_summary_dir = os.path.join(FLAGS.model_dir, "summary", "validation")
+        valid_summary_writer = tf.summary.FileWriter(valid_summary_dir, sess.graph)
 
-    # Create a saver for writing training checkpoints.
-    saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=1)
+        # Create a saver for writing training checkpoints.
+        saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=1)
 
 
-    '''###############################################'''
-    '''#       Create Training  Routine              #'''
-    '''###############################################'''
+        '''###############################################'''
+        '''#       Create Training  Routine              #'''
+        '''###############################################'''
 
-    # Define counters for accumulating measurements
-    counter_correct_predictions_training = 0.0
-    counter_loss_training = 0.0
-    net_type_var = True
+        # Define counters for accumulating measurements
+        counter_correct_predictions_training = 0.0
+        counter_loss_training = 0.0
+        net_type_var = True
 
-    try:
-        for epoch in range(1, FLAGS.num_epochs + 1):
+        try:
+            for epoch in range(1, FLAGS.num_epochs + 1):
 
-            for i in range(FLAGS.epoch_length):
-                if coord.should_stop():
-                    break
+                for i in range(FLAGS.epoch_length):
+                    if coord.should_stop():
+                        break
 
-                step = tf.train.global_step(sess, global_step)
+                    step = tf.train.global_step(sess, global_step)
 
-                if (step % FLAGS.checkpoint_every_step) == 0:
-                    ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'model'), global_step)
-                    print('Model saved in file : %s' % ckpt_save_path)
+                    if (step % FLAGS.checkpoint_every_step) == 0:
+                        ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'model'), global_step)
+                        print('Model saved in file : %s' % ckpt_save_path)
 
-                # Training
-                if epoch > 1:
-                    net_type_var = False
+                    # Training
+                    feed_dict = {mode: True}
+                    request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
+                    train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
+                        request_output, feed_dict=feed_dict)
 
-                feed_dict = {mode: True, net_type: net_type_var}
-                request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
-                train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
-                    request_output, feed_dict=feed_dict)
-                
-                ### Update counters
-                counter_correct_predictions_training += correct_predictions_training
-                # counter_correct_predictions_training += jaccard_similarity_score(true_labels, np.argmax(predictions, axis=1))
-                counter_loss_training += loss_training
-                ### Write summary data
-                train_summary_writer.add_summary(train_summary, step)
+                    ### Update counters
+                    counter_correct_predictions_training += correct_predictions_training
+                    # counter_correct_predictions_training += jaccard_similarity_score(true_labels, np.argmax(predictions, axis=1))
+                    counter_loss_training += loss_training
+                    ### Write summary data
+                    train_summary_writer.add_summary(train_summary, step)
 
-                # Print status message.
-                if (step % FLAGS.print_every_step) == 0:
-                    accuracy_avg_value_training = counter_correct_predictions_training / (FLAGS.print_every_step*BATCH_SIZE*CLIPS_PER_VIDEO)
-                    loss_avg_value_training = counter_loss_training / (FLAGS.print_every_step)
-                    print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training), flush=True)
-                    # Reset counters
-                    counter_correct_predictions_training = 0.0
-                    counter_loss_training = 0.0
-                    # Report : Note that accuracy_avg and loss_avg placeholders are defined just to feed average results to summaries.
-                    summary_report = sess.run(summaries_evaluation, feed_dict={accuracy_avg:accuracy_avg_value_training, loss_avg:loss_avg_value_training, net_type: net_type_var})
-                    train_summary_writer.add_summary(summary_report, step)
+                    # Print status message.
+                    if (step % FLAGS.print_every_step) == 0:
+                        accuracy_avg_value_training = counter_correct_predictions_training / (FLAGS.print_every_step*BATCH_SIZE*CLIPS_PER_VIDEO)
+                        loss_avg_value_training = counter_loss_training / (FLAGS.print_every_step)
+                        print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training), flush=True)
+                        # Reset counters
+                        counter_correct_predictions_training = 0.0
+                        counter_loss_training = 0.0
+                        # Report : Note that accuracy_avg and loss_avg placeholders are defined just to feed average results to summaries.
+                        summary_report = sess.run(summaries_evaluation, feed_dict={accuracy_avg:accuracy_avg_value_training, loss_avg:loss_avg_value_training, net_type: net_type_var})
+                        train_summary_writer.add_summary(summary_report, step)
 
-    except Exception as e:
-        # Report exceptions to the coordinator.
-        print(str(e))
-        coord.request_stop(e)
+        except Exception as e:
+            # Report exceptions to the coordinator.
+            print(str(e))
+            coord.request_stop(e)
 
-    finally:
-        # Terminate as usual. It is safe to call `coord.request_stop()` twice.
-        coord.request_stop()
-        coord.join(threads)
-
+        finally:
+            # Terminate as usual. It is safe to call `coord.request_stop()` twice.
+            coord.request_stop()
+            coord.join(threads)
 
 if __name__ == '__main__':
 
