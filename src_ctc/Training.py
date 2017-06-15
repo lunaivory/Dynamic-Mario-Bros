@@ -48,9 +48,6 @@ print("Writing to {}\n".format(FLAGS.model_dir))
 
 graph = tf.Graph()
 
-#load normalised class frequencies
-class_frequencies = 1/np.loadtxt('class_frequencies.csv')
-
 with graph.as_default():
     ''' set up placeholders '''
     # Training and validation placeholders
@@ -58,6 +55,7 @@ with graph.as_default():
 
     # Pass True in when it is in the trainging mode
     mode = tf.placeholder(tf.bool, name='mode')
+    no_gest = tf.placeholder(tf.bool, name='no_gest')
 
     loss_avg = tf.placeholder(tf.float32, name='loss_avg')
     accuracy_avg = tf.placeholder(tf.float32, name='accuracy_avg')
@@ -76,6 +74,13 @@ with graph.as_default():
     # Loss calculations: cross-entropy
     with tf.name_scope('ctc_loss'):
         # Return : A 1-D float tensor of shape [1]
+        mask = tf.not_equal(input_clip_label_op, NO_GESTURE-1)
+        mask = tf.reshape(tf.to_float(mask), shape=[40, 1])
+        logits = tf.cond(
+            no_gest,
+            lambda : logits,
+            lambda : tf.multiply(logits,mask)
+        )
         loss = tf.reduce_mean(tf.losses.sparse_softmax_cross_entropy(labels=input_clip_label_op, logits=tf.squeeze(logits)))
         #loss_ctc = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits_ctc, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
 
@@ -100,18 +105,18 @@ with graph.as_default():
                                 decay_steps = 3 * FLAGS.epoch_length, decay_rate=0.5, staircase=True)
         optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
         #optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
-        # gradients, v = zip(*optimizer_ctc.compute_gradients(loss_ctc))
+        #gradients, v = zip(*optimizer.compute_gradients(loss))
         #
-        # clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
-        # train_op = optimizer.apply_gradients(zip(clipped_gradients, v), global_step=global_step)
+        #clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
+        #train_op = optimizer.apply_gradients(zip(clipped_gradients, v), global_step=global_step)
         train_op = optimizer.minimize(loss, global_step=global_step)
 
     tf.add_to_collection('predictions', predictions)
     tf.add_to_collection('input_samples_op', input_samples_op)
     tf.add_to_collection('mode', mode)
 
-    #with tf.Session(graph=graph) as sess:
-    with tf.Session(config=tf.ConfigProto(device_count={'GPU': 0})) as sess:
+    with tf.Session(graph=graph) as sess:
+    #with tf.Session(config=tf.ConfigProto(device_count={'GPU': 0})) as sess:
         ''' Create Session '''
         init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         sess.run(init_op)
@@ -166,7 +171,11 @@ with graph.as_default():
                         print('Model saved in file : %s' % ckpt_save_path)
 
                     # Training
-                    feed_dict = {mode: True}
+                    # Training
+                    feed_dict = {mode: True, no_gest: False}
+                    if epoch > 15:
+                        feed_dict = {mode: True, no_gest: True}
+
                     request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
                     train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
                         request_output, feed_dict=feed_dict)
@@ -187,7 +196,7 @@ with graph.as_default():
                         counter_correct_predictions_training = 0.0
                         counter_loss_training = 0.0
                         # Report : Note that accuracy_avg and loss_avg placeholders are defined just to feed average results to summaries.
-                        summary_report = sess.run(summaries_evaluation, feed_dict={accuracy_avg:accuracy_avg_value_training, loss_avg:loss_avg_value_training, net_type: net_type_var})
+                        summary_report = sess.run(summaries_evaluation, feed_dict={accuracy_avg:accuracy_avg_value_training, loss_avg:loss_avg_value_training, no_gest: True})
                         train_summary_writer.add_summary(summary_report, step)
 
         except Exception as e:
