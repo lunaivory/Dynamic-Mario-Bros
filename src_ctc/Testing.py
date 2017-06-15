@@ -17,6 +17,16 @@ import util_testing
 from constants import *
 from sklearn.metrics import jaccard_similarity_score
 
+
+# LOG_DIR = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
+LOG_DIR = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497471639/'
+META_GRAPH_FILE = 'model-15500.meta'
+# MODEL_CP_PATH = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
+MODEL_CP_PATH = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497471639/'
+OUTPUT_PATH = '../evaluation/prediction/'
+REF_PATH = '../evaluation/reference/'
+
+
 def exportPredictions(output_csv_file_path, seq_gestures, seq_paddings):
     """ Export the given prediction to the csv file in the given path """
     ''' Given a list of gestures of clips '''
@@ -36,14 +46,6 @@ def exportPredictions(output_csv_file_path, seq_gestures, seq_paddings):
         output_file.close()
 
 
-
-
-# LOG_DIR = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
-LOG_DIR = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497471639/'
-META_GRAPH_FILE = 'model-15500.meta'
-# MODEL_CP_PATH = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
-MODEL_CP_PATH = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497471639/'
-OUTPUT_PATH = '../evaluation/prediction/'''
 
 tf.flags.DEFINE_string('log_dir', LOG_DIR, 'Checkpoint directory')
 tf.flags.DEFINE_string('meta_graph_file', META_GRAPH_FILE, 'Name of meta graph file')
@@ -72,6 +74,9 @@ with tf.Session() as sess:
     logits = tf.get_default_graph().get_tensor_by_name("accuracy/Reshape:0")
     logits_soft = tf.nn.softmax(logits)
 
+    correct_predictions = 0
+    total_predictions = 0
+
     for sample_id in tqdm(TEST_ID):
         print('========== sample %d ===========' % sample_id)
         sample = GestureSample('%s/%s/Sample%04d.zip' % (RAW_DATA_PATH, 'Test', sample_id))
@@ -84,6 +89,25 @@ with tf.Session() as sess:
         mask = np.mean(user, axis=3) > 150
         mask = mask.reshape((mask.shape + (1,)))
         vid = vid*mask
+
+        ''' get clip ground truth labels'''
+        clips_labels = []
+        dense_labels = [NO_GESTURE] * math.ceil(num_of_frames/FRAMES_PER_CLIP) * FRAMES_PER_CLIP
+        with open('%s/Sample%04d_labels.csv', 'r') as fin:
+            for row in fin:
+                dense_labels[row[1]-1 : row[2]] = row[0]
+
+        clip_label_range = np.arange(0, num_of_frames, 8)
+
+        for clip_label in clip_label_range:
+            clip_dense_labels_slice = dense_label[clip_label: clip_label+8]
+            lab_truth = clip_dense_labels_slice != NO_GESTURE
+            n = np.sum(lab_truth)
+            if n > 5:
+                clip_labels.append(clip_dense_labels_slice[lab_truth][0] - 1)
+            else:
+                clip_labels.append(NO_GESTURE - 1)
+
 
         results = []
         for clip_range in range(int(num_of_clip_batch)):
@@ -106,7 +130,17 @@ with tf.Session() as sess:
             preds[np.max(logs, axis=1) < 0.4] = NO_GESTURE - 1
             results += preds.tolist()
 
-        #print (results)
+        print (results)
+        print (clip_labels)
+
+        ''' get accuracy '''
+        for i in range(0, len(clip_labels)):
+            if (results[i]  == clip_labels[i]):
+                correct_predictions += 1
+        total_predictions += len(clip_labels)
+        print ('Accuracy : %.1f %', correct_predictions / total_predictions * 100)
+
+
         ''' write into files '''
         prev_gesture = results[0]
         start = 0
@@ -131,15 +165,17 @@ with tf.Session() as sess:
                     break
 
 
-        print('results')
-        print(results)
-        print('gestures')
-        print(gestures)
+#        print('results')
+#        print(results)
+#        print('gestures')
+#        print(gestures)
 
         fout = open('%s/Sample%04d_prediction.csv' % (OUTPUT_PATH, sample_id), 'w')
         for row in gestures:
             fout.write(repr(int(row[0])) + ',' + repr(int(row[1])) + ',' + repr(int(row[2])) + '\n')
         fout.close()
+
+    print('FINAL ACCURACY : %.2f %\n', correct_predictions/total_predictions*100)
 
 
 
