@@ -11,7 +11,10 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, net_type):
     """
     weight_decay=0.0001
     # TODO they dont mention any activations for the conv layers, to check
-    with tf.name_scope("network"): 
+    with tf.variable_scope("net") as scope:
+        scope.reuse_variables()
+
+    with tf.name_scope("network") as scope: 
         
         with tf.name_scope("norm_1"): 
             input_layer_norm = tf.layers.batch_normalization(
