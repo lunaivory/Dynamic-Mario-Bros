@@ -1,31 +1,7 @@
 import time
 import numpy as np
 import tensorflow as tf
-from constants import *
-
-# def _int64_feature(value):
-#     """Wrapper for inserting an int64 Feature into a SequenceExample proto."""
-#     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-#
-# def _float_feature(value):
-#     """Wrapper for inserting an int64 Feature into a SequenceExample proto."""
-#     return tf.train.Feature(int64_list=tf.train.FloatList(value=[value]))
-#
-# def _bytes_feature(value):
-#     """Wrapper for inserting a bytes Feature into a SequenceExample proto."""
-#     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value.tobytes()]))
-#
-# def _int64_feature_list(values):
-#     """Wrapper for inserting an int64 FeatureList into a SequenceExample proto."""
-#     return tf.train.FeatureList(feature=[_int64_feature(v) for v in values])
-#
-# def _bytes_feature_list(values):
-#     """Wrapper for inserting a bytes FeatureList into a SequenceExample proto."""
-#     return tf.train.FeatureList(feature=[_bytes_feature(v) for v in values])
-#
-# def _float_feature_list(values):
-#     """Wrapper for inserting a bytes FeatureList into a SequenceExample proto."""
-#     return tf.train.FeatureList(feature=[_float_feature(v) for v in values])
+import constants_ctc
 
 
 
@@ -37,30 +13,30 @@ def video_preprocessing_training_op(video_op):
     with tf.name_scope('Single_gesture_video_preprocessing_training'):
 
         #define constant tensors needed for preprocessing
-        clips_in_video = tf.constant(CROP[0], shape=[1], dtype=tf.int32)
-        channels = tf.constant(CROP[3], shape=[1], dtype=tf.int32)
+        clips_in_video = tf.constant(constants_ctc.CROP[0], shape=[1], dtype=tf.int32)
+        channels = tf.constant(constants_ctc.CROP[3], shape=[1], dtype=tf.int32)
 
         # Reshape for easier preprocessing
         video_op = tf.cast(video_op, dtype=tf.float32)
-        clip_op = tf.reshape(video_op, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP_PP] + list(IMAGE_SIZE))
+        clip_op = tf.reshape(video_op, [constants_ctc.CLIPS_PER_VIDEO * constants_ctc.FRAMES_PER_CLIP_PP] + list(constants_ctc.IMAGE_SIZE))
 
         # +- 3frames of jittering
         zero_tensor = tf.zeros(shape=[1], dtype=tf.int32)
-        jittering = tf.random_uniform(shape=[1], minval=0, maxval=6, dtype=tf.int32)
-        begin_jittering = tf.squeeze(tf.stack([jittering, zero_tensor, zero_tensor, zero_tensor]))
-        processed_video_jittering = tf.slice(clip_op, begin=begin_jittering, size=JITTERING)
+        # jittering = tf.random_uniform(shape=[1], minval=0, maxval=6, dtype=tf.int32)
+        # begin_jittering = tf.squeeze(tf.stack([jittering, zero_tensor, zero_tensor, zero_tensor]))
+        # processed_video_jittering = tf.slice(clip_op, begin=begin_jittering, size=JITTERING)
 
         #### Take random crop of dimension CROP=(CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3)
 
-        col_crop_idx = tf.random_uniform(shape=[1],minval=14, maxval=24, dtype=tf.int32)
-        row_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[1] - CROP[2]), dtype=tf.int32)
-        #col_crop_idx = tf.constant(int((IMAGE_SIZE[0] - CROP[1])/2), shape=[1], dtype=tf.int32)
-        #row_crop_idx = tf.constant(int((IMAGE_SIZE[1] - CROP[2])/2), shape=[1], dtype=tf.int32)
+        # col_crop_idx = tf.random_uniform(shape=[1],minval=14, maxval=24, dtype=tf.int32)
+        # row_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[1] - CROP[2]), dtype=tf.int32)
+        col_crop_idx = tf.constant(int((constants_ctc.IMAGE_SIZE[0] - constants_ctc.CROP[1])/2), shape=[1], dtype=tf.int32)
+        row_crop_idx = tf.constant(int((constants_ctc.IMAGE_SIZE[1] - constants_ctc.CROP[2])/2), shape=[1], dtype=tf.int32)
         begin_crop = tf.squeeze(tf.stack([zero_tensor, col_crop_idx, row_crop_idx, zero_tensor]))
-        processed_video = tf.slice(processed_video_jittering, begin=begin_crop, size=CROP)
+        processed_video = tf.slice(clip_op, begin=begin_crop, size=constants_ctc.CROP)
 
         #### Random rotation of +- 15 deg
-        angle = tf.random_uniform(shape=[1],minval=-ROT_ANGLE, maxval=ROT_ANGLE, dtype=tf.float32)
+        angle = tf.random_uniform(shape=[1],minval=-constants_ctc.ROT_ANGLE, maxval=constants_ctc.ROT_ANGLE, dtype=tf.float32)
         processed_video = tf.contrib.image.rotate(processed_video, angles=angle)
 
         #### Random scaling
@@ -83,7 +59,8 @@ def video_preprocessing_training_op(video_op):
         #processed_video = tf.case([(tf.less(rand, const_prob), lambda :processed_video)], default=lambda : tf.reverse(processed_video, axis=[2]))
 
         # reshape to correct size for nework
-        processed_video = tf.reshape(processed_video, [CLIPS_PER_VIDEO, FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
+        processed_video = tf.reshape(processed_video, [constants_ctc.CLIPS_PER_VIDEO, constants_ctc.FRAMES_PER_CLIP, constants_ctc.CROP[1],
+                                                       constants_ctc.CROP[2], constants_ctc.CROP[3]])
         
         # normalise single images
         # processed_video = tf.reshape(processed_video, [CLIPS_PER_VIDEO * FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
@@ -122,11 +99,11 @@ def read_and_decode(filename_queue):
 
         # get dense labels to calculate accuracy
         seq_label_dense = tf.decode_raw(features_encoded['dense_label'], tf.int32)
-        seq_label_dense = tf.reshape(seq_label_dense, [FRAMES_PER_VIDEO])
+        seq_label_dense = tf.reshape(seq_label_dense, [constants_ctc.FRAMES_PER_VIDEO])
 
         # get per clip labels to train 3dcnn
         seq_label_clip = tf.decode_raw(features_encoded['clip_label'], tf.int32)
-        seq_label_clip = tf.reshape(seq_label_clip, [CLIPS_PER_VIDEO])
+        seq_label_clip = tf.reshape(seq_label_clip, [constants_ctc.CLIPS_PER_VIDEO])
 
         return seq_rgb_pp, seq_label, seq_label_dense, seq_label_clip
 
@@ -134,7 +111,7 @@ def input_pipeline(filenames):
     with tf.name_scope('input_pipeline_training'):
 
         # Create a input file queue
-        filename_queue = tf.train.string_input_producer(filenames, num_epochs=NUM_EPOCHS, shuffle=True, capacity=1000,
+        filename_queue = tf.train.string_input_producer(filenames, num_epochs=constants_ctc.NUM_EPOCHS, shuffle=True, capacity=1000,
                                                         name='Training_string_input')
 
         # Read data from .tfrecords files and decode to a list of samples (Using threads)
@@ -142,13 +119,15 @@ def input_pipeline(filenames):
 
         # Create batches
         batch_rgb, batch_label, batch_dense_label, batch_clip_label = tf.train.shuffle_batch([data, label, dense_label, clip_label],
-                                                        batch_size=BATCH_SIZE,
-                                                        capacity=QUEUE_CAPACITY,
-                                                        min_after_dequeue=int(QUEUE_CAPACITY / 2),
+                                                        batch_size=constants_ctc.BATCH_SIZE,
+                                                        capacity=constants_ctc.QUEUE_CAPACITY,
+                                                        min_after_dequeue=int(constants_ctc.QUEUE_CAPACITY / 2),
                                                        )
 
         #reshape video to correct shape
-        batch_rgb = tf.reshape(batch_rgb, [BATCH_SIZE * CLIPS_PER_VIDEO, FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
+        batch_rgb = tf.reshape(batch_rgb, [constants_ctc.BATCH_SIZE * constants_ctc.CLIPS_PER_VIDEO,
+                                           constants_ctc.FRAMES_PER_CLIP, constants_ctc.CROP[1],
+                                           constants_ctc.CROP[2], constants_ctc.CROP[3]])
 
         # make sparse tensor from batch labels
         # values are zero for testing
@@ -159,10 +138,10 @@ def input_pipeline(filenames):
         batch_label_sparse = tf.SparseTensor(idx, vals, batch_label.get_shape())
 
         # reshape dense labels (frame by frame annotations)
-        batch_dense_label = tf.reshape(batch_dense_label, [BATCH_SIZE*FRAMES_PER_VIDEO])
+        batch_dense_label = tf.reshape(batch_dense_label, [constants_ctc.BATCH_SIZE*constants_ctc.FRAMES_PER_VIDEO])
 
         # reshape clip labels (frame by frame annotations)
-        batch_clip_label = tf.reshape(batch_clip_label, [BATCH_SIZE*CLIPS_PER_VIDEO])
+        batch_clip_label = tf.reshape(batch_clip_label, [constants_ctc.BATCH_SIZE*constants_ctc.CLIPS_PER_VIDEO])
 
         return batch_rgb, batch_label_sparse, batch_dense_label, batch_clip_label
 
@@ -254,3 +233,4 @@ def sparse_tuple_from(sequence, dtype=np.int32):
 
 
 # look_into_tfRecords(TRAIN_FILENAMES, 'Train')
+

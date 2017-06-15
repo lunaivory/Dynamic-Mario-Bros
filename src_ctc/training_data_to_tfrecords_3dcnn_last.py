@@ -35,7 +35,7 @@ def get_no_gesture(gestures):
         # sample an interval of no-gestures until you get one larger than 8 clips
         # add extra frames to make sure we get a "true" no gesture and not a noisy one right
         # after a gesture was completed
-        extra_frames = np.random.randint(low=0, high=4)
+        extra_frames = np.random.randint(low=0, high=16)
 
         while time_diff[selected_interval] < (FRAMES_PER_CLIP_PP + extra_frames) :
             selected_interval = np.random.randint(low=0, high=time_diff.shape[0])

@@ -39,10 +39,10 @@ def exportPredictions(output_csv_file_path, seq_gestures, seq_paddings):
 
 
 # LOG_DIR = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
-LOG_DIR = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497450063'
-META_GRAPH_FILE = 'model-1500.meta'
+LOG_DIR = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497471639/'
+META_GRAPH_FILE = 'model-15500.meta'
 # MODEL_CP_PATH = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1497347590'
-MODEL_CP_PATH = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497450063'
+MODEL_CP_PATH = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497471639/'
 OUTPUT_PATH = '../evaluation/prediction/'''
 
 tf.flags.DEFINE_string('log_dir', LOG_DIR, 'Checkpoint directory')
@@ -60,8 +60,8 @@ for attr, value in sorted(FLAGS.__flags.items()):
 prev_sample = -1
 prev_gesture= -1
 
-with tf.Session(config=tf.ConfigProto(device_count={'GPU':0})) as sess:
-#with tf.Session() as sess:
+#with tf.Session(config=tf.ConfigProto(device_count={'GPU':0})) as sess:
+with tf.Session() as sess:
     saver = tf.train.import_meta_graph(os.path.join(FLAGS.log_dir, FLAGS.meta_graph_file))
     saver.restore(sess, tf.train.latest_checkpoint(FLAGS.log_dir))
 
@@ -98,12 +98,12 @@ with tf.Session(config=tf.ConfigProto(device_count={'GPU':0})) as sess:
             batch_clips = np.asarray([list(vid[start:end]) + [vid[0]]*end_padding])
             batch_clips = batch_clips[:,:, int((IMAGE_SIZE[0] - CROP[1])/2) : int((IMAGE_SIZE[0] + CROP[1])/2),
                                            int((IMAGE_SIZE[1] - CROP[2])/2) : int((IMAGE_SIZE[1] + CROP[2])/2),:]
-            batch_clips = np.asarray(batch_clips, dtype=np.uint8).reshape((BATCH_SIZE, FRAMES_PER_CLIP) + (CROP[1], CROP[2], CROP[3]))
+            batch_clips = np.asarray(batch_clips, dtype=np.float32).reshape((BATCH_SIZE, FRAMES_PER_CLIP) + (CROP[1], CROP[2], CROP[3]))
 
             feed_dict = {mode:False, input_samples_op:batch_clips}
             _, logs = sess.run([predictions, logits_soft], feed_dict = feed_dict) #[0].tolist()
             preds = np.argmax(logs, axis=1)
-            preds[np.max(logs, axis=1) < 0.8] = NO_GESTURE - 1
+            preds[np.max(logs, axis=1) < 0.4] = NO_GESTURE - 1
             results += preds.tolist()
 
         #print (results)
@@ -135,8 +135,6 @@ with tf.Session(config=tf.ConfigProto(device_count={'GPU':0})) as sess:
         print(results)
         print('gestures')
         print(gestures)
-
-        input("Press Enter to continue...")
 
         fout = open('%s/Sample%04d_prediction.csv' % (OUTPUT_PATH, sample_id), 'w')
         for row in gestures:
