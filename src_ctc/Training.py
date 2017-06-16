@@ -55,18 +55,50 @@ with graph.as_default():
 
     # Pass True in when it is in the trainging mode
     mode = tf.placeholder(tf.bool, name='mode')
-    no_gest = tf.placeholder(tf.bool, name='no_gest')
+    # no_gest = tf.placeholder(tf.bool, name='no_gest')
 
     loss_avg = tf.placeholder(tf.float32, name='loss_avg')
     accuracy_avg = tf.placeholder(tf.float32, name='accuracy_avg')
     # learning_rate = tf.placeholder(tf.float32, name='learning_rate')
 
     # Returns 'logits' layer, the top-most layer of the network
-    logits = model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode)
+    dropout2_flat = model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode)
+    logits = tf.layers.dense(inputs=dropout2_flat, units=21)
+
+    cnn_representations = tf.map_fn(lambda x: model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode, reuse=True),
+                                         elems=dropout2_flat,
+                                         dtype=tf.float32,
+                                         back_prop=True)
+    cnn_representations = tf.reshape(cnn_representations, shape=[1, CLIPS_PER_VIDEO, -1])
+    # lstm
+    with tf.name_scope("LSTM"):
+        seq_length =CLIPS_PER_VIDEO # tf.shape(dropout2_flat)[1]
+        lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=2048)
+        lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, dropout2_flat, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
+
+    # Add dropout operation
+    with tf.name_scope("dropout3"):
+        dropout3 = tf.layers.dropout(inputs=lstm_outputs, rate=DROPOUT_RATE, training=mode)
+
+    # Dense Layer
+    with tf.name_scope("dense3"):
+        dense3 = tf.layers.dense(inputs=dropout3, units=4096, activation=tf.nn.relu,
+                                 #kernel_regularizer=slim.l2_regularizer(weight_decay),
+                                 #bias_regularizer=slim.l2_regularizer(weight_decay)
+                                 )
+
+    # Add dropout operation
+    with tf.name_scope("dropout4"):
+        dropout4 = tf.layers.dropout(inputs=dense3, rate=DROPOUT_RATE, training=mode)
+
+    with tf.name_scope("logits"):
+        logits_lstm = tf.layers.dense(inputs=dropout4, units=21)
+
     '''Set up Variables'''
     # Count number of samples fed and correct predictions made.
     # Attached to a summary op
     global_step = tf.Variable(1, name='global_step', trainable=False)
+    global_step_lstm = tf.Variable(1, name='global_step', trainable=False)
 
     counter_correct_prediction = tf.Variable(0, name='counter_correct_prediction', trainable=False)
     counter_samples_fed = tf.Variable(0, name='counter_samples_fed', trainable=False)
@@ -76,12 +108,11 @@ with graph.as_default():
         # Return : A 1-D float tensor of shape [1]
         mask = tf.not_equal(input_clip_label_op, NO_GESTURE-1)
         temp_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_clip_label_op, logits=tf.squeeze(logits))
-        loss = tf.cond(
-            no_gest,
-            lambda: tf.reduce_mean(temp_loss),
-            lambda: tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(temp_loss,tf.to_float(mask))), tf.reduce_sum(tf.to_float(mask))))
-        )        
-#loss_ctc = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits_ctc, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
+        loss = tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(temp_loss,tf.to_float(mask))), tf.reduce_sum(tf.to_float(mask))))
+
+        loss_lstm = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_clip_label_op, logits=tf.squeeze(logits_lstm)))
+
+        #loss_ctc = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits_ctc, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
 
     # Accuracy calculations
     with tf.name_scope('accuracy'):
@@ -102,21 +133,24 @@ with graph.as_default():
     with tf.name_scope('train'):
         learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step,
                                 decay_steps = 3 * FLAGS.epoch_length, decay_rate=0.5, staircase=True)
+
         optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
+        train_op = optimizer.minimize(loss, global_step=global_step)
+
+        optimizer_lstm = tf.train.AdamOptimizer(FLAGS.learning_rate)
         #optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
-        gradients, v = zip(*optimizer.compute_gradients(loss))
+        gradients, v = zip(*optimizer_lstm.compute_gradients(loss))
         
         clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
-        train_op = optimizer.apply_gradients(zip(clipped_gradients, v), global_step=global_step)
+        train_op_lstm = optimizer_lstm.apply_gradients(zip(clipped_gradients, v), global_step=global_step_lstm)
         #train_op = optimizer.minimize(loss, global_step=global_step)
 
     tf.add_to_collection('predictions', predictions)
     tf.add_to_collection('input_samples_op', input_samples_op)
     tf.add_to_collection('mode', mode)
-    tf.add_to_collection('no_gest', no_gest)
 
-    with tf.Session(graph=graph) as sess:
-    #with tf.Session(config=tf.ConfigProto(device_count={'GPU': 0})) as sess:
+    #with tf.Session(graph=graph) as sess:
+    with tf.Session(config=tf.ConfigProto(device_count={'GPU': 0})) as sess:
         ''' Create Session '''
         init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         sess.run(init_op)
@@ -173,9 +207,9 @@ with graph.as_default():
 
                     # Training
                     # Training
-                    feed_dict = {mode: True, no_gest: False}
-                    if (switch % 1) == 0:
-                        feed_dict = {mode: True, no_gest: True}
+                    feed_dict = {mode: True}
+                    if (switch % 2) == 0:
+                        feed_dict = {mode: True}
                     switch += 1
                     request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
                     train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
