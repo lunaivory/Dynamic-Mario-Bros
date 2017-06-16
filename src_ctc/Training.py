@@ -79,13 +79,13 @@ with graph.as_default():
                                          dtype=tf.float32,
                                          back_prop=True)
 
-    logits = tf.layers.dense(inputs=tf.reshape(cnn_representations, shape=[CLIPS_PER_VIDEO,4096]), units=21)
+    logits = tf.layers.dense(inputs=tf.reshape(cnn_representations, shape=[CLIPS_PER_VIDEO,-1]), units=21)
 
     cnn_representations = tf.reshape(cnn_representations, shape=[1, CLIPS_PER_VIDEO, -1])
     # lstm
     with tf.name_scope("LSTM"):
         seq_length =CLIPS_PER_VIDEO # tf.shape(dropout2_flat)[1]
-        lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=2048)
+        lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=1024)
         lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, dropout2_flat, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
 
     # Add dropout operation
@@ -94,7 +94,7 @@ with graph.as_default():
 
     # Dense Layer
     with tf.name_scope("dense3"):
-        dense3 = tf.layers.dense(inputs=dropout3, units=4096, activation=tf.nn.relu,
+        dense3 = tf.layers.dense(inputs=dropout3, units=1024, activation=tf.nn.relu,
                                  #kernel_regularizer=slim.l2_regularizer(weight_decay),
                                  #bias_regularizer=slim.l2_regularizer(weight_decay)
                                  )
@@ -118,22 +118,9 @@ with graph.as_default():
     # Loss calculations: cross-entropy
     with tf.name_scope('ctc_loss'):
         # Return : A 1-D float tensor of shape [1]
-        #pick some gestures and remove most of the no gesture to rebalance classes
-        mask = tf.not_equal(input_clip_label_op, NO_GESTURE-1)
-        mask_rand = tf.cast(tf.random_uniform(shape=[CLIPS_PER_VIDEO], minval=1, maxval=2, dtype=tf.int32), dtype=tf.bool)
-        #no_gest_idx = tf.squeeze(tf.where(tf.logical_not(mask)))
-        #no_gest_idx = tf.random_shuffle(no_gest_idx)
-        #one_hot_indices = tf.slice(no_gest_idx, begin=[0], size=[3])
-        #no_gest = tf.reduce_sum(tf.one_hot(one_hot_indices, depth = CLIPS_PER_VIDEO), axis=0)
-        mask = tf.logical_and(mask, mask_rand)
-        #mask = tf.logical_or(mask, tf.cast(no_gest, dtype=tf.bool))
-        #mask = tf.Print(mask, [mask], summarize=30) 
-       
-        temp_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_clip_label_op, logits=tf.squeeze(logits))
-        loss = tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(temp_loss,tf.to_float(mask))), tf.reduce_sum(tf.to_float(mask)+1e-10)))
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_clip_label_op, logits=tf.squeeze(logits)))
 
         loss_lstm = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_clip_label_op, logits=tf.squeeze(logits_lstm)))
-
         #loss_ctc = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits_ctc, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
 
     # Accuracy calculations
@@ -156,16 +143,16 @@ with graph.as_default():
         learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step,
                                 decay_steps = 3 * FLAGS.epoch_length, decay_rate=0.5, staircase=True)
 
-        optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
+        optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate, name='Adam_3dcnn')
         train_op = optimizer.minimize(loss, global_step=global_step)
 
-        optimizer_lstm = tf.train.AdamOptimizer(FLAGS.learning_rate)
+        optimizer_lstm = tf.train.AdamOptimizer(FLAGS.learning_rate, name='Adam_lstm')
         #optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
-        gradients, v = zip(*optimizer_lstm.compute_gradients(loss_lstm))
+        #gradients, v = zip(*optimizer_lstm.compute_gradients(loss_lstm))
         
-        clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
-        train_op_lstm = optimizer_lstm.apply_gradients(zip(clipped_gradients, v), global_step=global_step_lstm)
-        #train_op = optimizer.minimize(loss, global_step=global_step)
+        #clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
+        #train_op_lstm = optimizer_lstm.apply_gradients(zip(clipped_gradients, v), global_step=global_step_lstm)
+        train_op_lstm = optimizer_lstm.minimize(loss, global_step=global_step_lstm)
 
     tf.add_to_collection('predictions', predictions)
     tf.add_to_collection('input_samples_op', input_samples_op)
@@ -239,8 +226,8 @@ with graph.as_default():
                         print('loss_rnn: ' + str(loss_training))
                     else:
                         feed_dict = {mode: True, net_type: net_ty}
-                        request_output = [mask, summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
-                        mask_out, train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
+                        request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
+                        train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
                         request_output, feed_dict=feed_dict)
                     
                     switch += 1

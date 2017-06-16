@@ -30,7 +30,7 @@ NUM_OF_NO_GESTURE_CLIPS = 3
 '''Training parameters'''
 DROPOUT_RATE =0.5 #0.75
 LEARNING_RATE = 1e-4 #3e-4
-BATCH_SIZE = 32 # 5 gestures per batch
+BATCH_SIZE = 30 # 5 gestures per batch
 NUM_EPOCHS = 10000
 PRINT_EVERY_STEP = 5 #200
 EVALUATE_EVERY_STEP = 1000
