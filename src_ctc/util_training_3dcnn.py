@@ -58,12 +58,23 @@ def video_preprocessing_training_op(video_op):
         #processed_video = tf.case([(tf.less(rand, const_prob), lambda :processed_video)], default=lambda : tf.reverse(processed_video, axis=[2]))
 
         # reshape to correct size for nework
-        processed_video = tf.reshape(processed_video, [constants_3dcnn.CLIPS_PER_VIDEO,constants_3dcnn.FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
+        processed_video = tf.reshape(processed_video, 
+            [constants_3dcnn.CLIPS_PER_VIDEO, constants_3dcnn.FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
         
         # normalise single images
-        processed_video = tf.reshape(processed_video, [constants_3dcnn.CLIPS_PER_VIDEO * constants_3dcnn.FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
-        mean, var = tf.nn.moments(processed_video, axes=[0,1,2,3])
-        processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
+        # processed_video = tf.reshape(processed_video, [constants_3dcnn.CLIPS_PER_VIDEO * constants_3dcnn.FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
+        # mean, var = tf.nn.moments(processed_video, axes=[0,2,3,4])
+        # processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
+
+        # normalise per clip
+        processed_video = tf.cast(processed_video, tf.float32)
+        processed_video = tf.map_fn(lambda x: tf.nn.batch_normalization(x,
+                                                    mean = tf.nn.moments(x, axes=[0,1,2,3])[0],
+                                                    variance  = tf.nn.moments(x, axes=[0,1,2,3])[1],
+                                                    offset = None, scale=None, variance_epsilon=1e-10),
+                                                elems = processed_video,
+                                                dtype = tf.float32,
+                                                back_prop = False)
 
     return processed_video
     
