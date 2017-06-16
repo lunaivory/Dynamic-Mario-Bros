@@ -53,8 +53,7 @@ graph = tf.Graph()
 with graph.as_default():
     ''' set up placeholders '''
     # Training and validation placeholders
-    #data_lstm = util_training.input_pipeline(TRAIN_FILENAMES)
-    print(str(constants_3dcnn.TRAIN_FILENAMES))
+    data_lstm = util_training.input_pipeline(TRAIN_FILENAMES)
     data_3dcnn = util_training_3dcnn.input_pipeline(constants_3dcnn.TRAIN_FILENAMES)
 
     #input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
@@ -80,7 +79,7 @@ with graph.as_default():
                                          dtype=tf.float32,
                                          back_prop=True)
 
-    logits = tf.layers.dense(inputs=tf.reshape(cnn_representations, shape=[CLIPS_PER_VIDEO, -1]), units=21)
+    logits = tf.layers.dense(inputs=tf.reshape(cnn_representations, shape=[CLIPS_PER_VIDEO,4096]), units=21)
 
     cnn_representations = tf.reshape(cnn_representations, shape=[1, CLIPS_PER_VIDEO, -1])
     # lstm

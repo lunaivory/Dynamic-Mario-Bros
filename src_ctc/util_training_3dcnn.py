@@ -32,7 +32,7 @@ def video_preprocessing_training_op(video_op):
         col_crop_idx = tf.constant(int((IMAGE_SIZE[0] - CROP[1])/2), shape=[1], dtype=tf.int32)
         row_crop_idx = tf.constant(int((IMAGE_SIZE[1] - CROP[2])/2), shape=[1], dtype=tf.int32)
         begin_crop = tf.squeeze(tf.stack([zero_tensor, col_crop_idx, row_crop_idx, zero_tensor]))
-        processed_video = tf.slice(processed_video_jittering, begin=begin_crop, size=CROP)
+        processed_video = tf.slice(processed_video_jittering, begin=begin_crop, size=constants_3dcnn.CROP)
 
         #### Random rotation of +- 15 deg
         angle = tf.random_uniform(shape=[1],minval=-ROT_ANGLE, maxval=ROT_ANGLE, dtype=tf.float32)
@@ -123,7 +123,7 @@ def input_pipeline(filenames):
                                                        )
 
         #reshape video to correct shape
-        batch_rgb = tf.reshape(batch_rgb, [BATCH_SIZE * CLIPS_PER_VIDEO, FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
+        batch_rgb = tf.reshape(batch_rgb, [constants_3dcnn.BATCH_SIZE * constants_3dcnn.CLIPS_PER_VIDEO, constants_3dcnn.FRAMES_PER_CLIP, CROP[1], CROP[2], CROP[3]])
 
         # make sparse tensor from batch labels
         # values are zero for testing
