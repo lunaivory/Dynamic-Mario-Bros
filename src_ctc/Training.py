@@ -75,14 +75,13 @@ with graph.as_default():
     with tf.name_scope('ctc_loss'):
         # Return : A 1-D float tensor of shape [1]
         mask = tf.not_equal(input_clip_label_op, NO_GESTURE-1)
-        mask = tf.reshape(tf.to_float(mask), shape=[40, 1])
-        logits = tf.cond(
+        temp_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_clip_label_op, logits=tf.squeeze(logits))
+        loss = tf.cond(
             no_gest,
-            lambda : logits,
-            lambda : tf.multiply(logits,mask)
-        )
-        loss = tf.reduce_mean(tf.losses.sparse_softmax_cross_entropy(labels=input_clip_label_op, logits=tf.squeeze(logits)))
-        #loss_ctc = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits_ctc, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
+            lambda: tf.reduce_mean(temp_loss),
+            lambda: tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(temp_loss,tf.to_float(mask))), tf.reduce_sum(tf.to_float(mask))))
+        )        
+#loss_ctc = tf.reduce_mean(tf.nn.ctc_loss(input_labels_op, logits_ctc, sequence_length=[CLIPS_PER_VIDEO*FLAGS.batch_size], time_major=False))
 
     # Accuracy calculations
     with tf.name_scope('accuracy'):
@@ -105,15 +104,16 @@ with graph.as_default():
                                 decay_steps = 3 * FLAGS.epoch_length, decay_rate=0.5, staircase=True)
         optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
         #optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
-        #gradients, v = zip(*optimizer.compute_gradients(loss))
-        #
-        #clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
-        #train_op = optimizer.apply_gradients(zip(clipped_gradients, v), global_step=global_step)
-        train_op = optimizer.minimize(loss, global_step=global_step)
+        gradients, v = zip(*optimizer.compute_gradients(loss))
+        
+        clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
+        train_op = optimizer.apply_gradients(zip(clipped_gradients, v), global_step=global_step)
+        #train_op = optimizer.minimize(loss, global_step=global_step)
 
     tf.add_to_collection('predictions', predictions)
     tf.add_to_collection('input_samples_op', input_samples_op)
     tf.add_to_collection('mode', mode)
+    tf.add_to_collection('no_gest', no_gest)
 
     with tf.Session(graph=graph) as sess:
     #with tf.Session(config=tf.ConfigProto(device_count={'GPU': 0})) as sess:
@@ -145,10 +145,11 @@ with graph.as_default():
         valid_summary_writer = tf.summary.FileWriter(valid_summary_dir, sess.graph)
 
         # Create a saver for writing training checkpoints.
-        saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=1)
+        saver = tf.train.Saver(max_to_keep=1)
 
 
         '''###############################################'''
+        '''#       Create Training  Routine              #'''
         '''#       Create Training  Routine              #'''
         '''###############################################'''
 
@@ -156,7 +157,7 @@ with graph.as_default():
         counter_correct_predictions_training = 0.0
         counter_loss_training = 0.0
         net_type_var = True
-
+        switch = 0
         try:
             for epoch in range(1, FLAGS.num_epochs + 1):
 
@@ -165,7 +166,7 @@ with graph.as_default():
                         break
 
                     step = tf.train.global_step(sess, global_step)
-
+                  
                     if (step % FLAGS.checkpoint_every_step) == 0:
                         ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'model'), global_step)
                         print('Model saved in file : %s' % ckpt_save_path)
@@ -173,9 +174,9 @@ with graph.as_default():
                     # Training
                     # Training
                     feed_dict = {mode: True, no_gest: False}
-                    if epoch > 15:
+                    if (switch % 1) == 0:
                         feed_dict = {mode: True, no_gest: True}
-
+                    switch += 1
                     request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
                     train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
                         request_output, feed_dict=feed_dict)

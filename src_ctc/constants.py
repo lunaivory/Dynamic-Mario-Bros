@@ -16,7 +16,7 @@ TFRecord_DATA_PATH = '../tf-data/'
 # use clips of 80 frames like they did in the paper
 FRAMES_PER_VIDEO_PP = 400
 FRAMES_PER_CLIP = 8 
-FRAMES_PER_VIDEO = 320 #80
+FRAMES_PER_VIDEO = 240 #80
 CLIPS_PER_VIDEO = int(FRAMES_PER_VIDEO / FRAMES_PER_CLIP)
 
 """preprocesssing parameters"""
@@ -29,10 +29,10 @@ NO_GESTURE = 21
 
 '''Training parameters'''
 DROPOUT_RATE =0.5 #0.75
-LEARNING_RATE = 1e-3 #3e-4
+LEARNING_RATE = 1e-4 #3e-4
 BATCH_SIZE = 1 # 5 gestures per batch
 NUM_EPOCHS = 100
-PRINT_EVERY_STEP = 5 #200
+PRINT_EVERY_STEP = 15 #200
 EVALUATE_EVERY_STEP = 1000
 CHECKPOINT_EVERY_STEP = 500
 

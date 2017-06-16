@@ -27,7 +27,7 @@ def video_preprocessing_training_op(video_op):
 
         #### Take random crop of dimension CROP=(CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3)
 
-        col_crop_idx = tf.random_uniform(shape=[1],minval=14, maxval=24, dtype=tf.int32)
+        col_crop_idx = tf.random_uniform(shape=[1],minval=17, maxval=21, dtype=tf.int32)
         row_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[1] - CROP[2]), dtype=tf.int32)
         #col_crop_idx = tf.constant(int((IMAGE_SIZE[0] - CROP[1])/2), shape=[1], dtype=tf.int32)
         #row_crop_idx = tf.constant(int((IMAGE_SIZE[1] - CROP[2])/2), shape=[1], dtype=tf.int32)
@@ -38,6 +38,8 @@ def video_preprocessing_training_op(video_op):
         angle = tf.random_uniform(shape=[1],minval=-ROT_ANGLE, maxval=ROT_ANGLE, dtype=tf.float32)
         processed_video = tf.contrib.image.rotate(processed_video, angles=angle)
 
+        processed_video = [tf.image.per_image_standardization(img) for img in tf.unstack(processed_video)]
+        processed_video = tf.stack(processed_video)
         #### Random scaling
         ## do this by taking a crop of random size and then resizing to the original shape
         #begin_col = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[1])), dtype=tf.int32)
