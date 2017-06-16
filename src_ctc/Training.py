@@ -6,11 +6,13 @@ import time as time
 import os
 
 import util_training
+import util_training_3dcnn
 
 '''####################################################'''
 '''#                Self-defined library              #'''
 '''####################################################'''
 from constants import *
+import constants_3dcnn
 from sklearn.metrics import jaccard_similarity_score
 
 '''#########################################################'''
@@ -51,11 +53,19 @@ graph = tf.Graph()
 with graph.as_default():
     ''' set up placeholders '''
     # Training and validation placeholders
-    input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
+    #data_lstm = util_training.input_pipeline(TRAIN_FILENAMES)
+    print(str(constants_3dcnn.TRAIN_FILENAMES))
+    data_3dcnn = util_training_3dcnn.input_pipeline(constants_3dcnn.TRAIN_FILENAMES)
 
+    #input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
     # Pass True in when it is in the trainging mode
     mode = tf.placeholder(tf.bool, name='mode')
-    # no_gest = tf.placeholder(tf.bool, name='no_gest')
+    net_type = tf.placeholder(tf.bool, name='net_type')
+    
+    input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op = tf.cond(
+                                     net_type,
+                                     lambda : data_lstm,
+                                     lambda : data_3dcnn)
 
     loss_avg = tf.placeholder(tf.float32, name='loss_avg')
     accuracy_avg = tf.placeholder(tf.float32, name='accuracy_avg')
@@ -63,12 +73,15 @@ with graph.as_default():
 
     # Returns 'logits' layer, the top-most layer of the network
     dropout2_flat = model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode)
-    logits = tf.layers.dense(inputs=dropout2_flat, units=21)
+    #logits = tf.layers.dense(inputs=dropout2_flat, units=21)
 
     cnn_representations = tf.map_fn(lambda x: model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode, reuse=True),
                                          elems=dropout2_flat,
                                          dtype=tf.float32,
                                          back_prop=True)
+
+    logits = tf.layers.dense(inputs=tf.reshape(cnn_representations, shape=[CLIPS_PER_VIDEO, -1]), units=21)
+
     cnn_representations = tf.reshape(cnn_representations, shape=[1, CLIPS_PER_VIDEO, -1])
     # lstm
     with tf.name_scope("LSTM"):
@@ -106,9 +119,19 @@ with graph.as_default():
     # Loss calculations: cross-entropy
     with tf.name_scope('ctc_loss'):
         # Return : A 1-D float tensor of shape [1]
+        #pick some gestures and remove most of the no gesture to rebalance classes
         mask = tf.not_equal(input_clip_label_op, NO_GESTURE-1)
+        mask_rand = tf.cast(tf.random_uniform(shape=[CLIPS_PER_VIDEO], minval=1, maxval=2, dtype=tf.int32), dtype=tf.bool)
+        #no_gest_idx = tf.squeeze(tf.where(tf.logical_not(mask)))
+        #no_gest_idx = tf.random_shuffle(no_gest_idx)
+        #one_hot_indices = tf.slice(no_gest_idx, begin=[0], size=[3])
+        #no_gest = tf.reduce_sum(tf.one_hot(one_hot_indices, depth = CLIPS_PER_VIDEO), axis=0)
+        mask = tf.logical_and(mask, mask_rand)
+        #mask = tf.logical_or(mask, tf.cast(no_gest, dtype=tf.bool))
+        #mask = tf.Print(mask, [mask], summarize=30) 
+       
         temp_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_clip_label_op, logits=tf.squeeze(logits))
-        loss = tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(temp_loss,tf.to_float(mask))), tf.reduce_sum(tf.to_float(mask))))
+        loss = tf.reduce_mean(tf.divide(tf.reduce_sum(tf.multiply(temp_loss,tf.to_float(mask))), tf.reduce_sum(tf.to_float(mask)+1e-10)))
 
         loss_lstm = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_clip_label_op, logits=tf.squeeze(logits_lstm)))
 
@@ -118,8 +141,8 @@ with graph.as_default():
     with tf.name_scope('accuracy'):
         logits = tf.reshape(logits, shape=[-1,21])
         predictions = tf.argmax(logits, 1, name='predictions')
-        predictions = tf.Print(predictions,[predictions], summarize=16)
-        input_clip_label_op = tf.Print(input_clip_label_op, [input_clip_label_op], summarize=16)
+        predictions = tf.Print(predictions,[predictions], summarize=30)
+        input_clip_label_op = tf.Print(input_clip_label_op, [input_clip_label_op], summarize=30)
 
         logits_softmax = tf.nn.softmax(logits)
         #logits_expanded = tf.stack([tf.squeeze(tf.nn.softmax(logits)) for i in range(FRAMES_PER_CLIP)], axis=1)
@@ -139,7 +162,7 @@ with graph.as_default():
 
         optimizer_lstm = tf.train.AdamOptimizer(FLAGS.learning_rate)
         #optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
-        gradients, v = zip(*optimizer_lstm.compute_gradients(loss))
+        gradients, v = zip(*optimizer_lstm.compute_gradients(loss_lstm))
         
         clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
         train_op_lstm = optimizer_lstm.apply_gradients(zip(clipped_gradients, v), global_step=global_step_lstm)
@@ -149,8 +172,8 @@ with graph.as_default():
     tf.add_to_collection('input_samples_op', input_samples_op)
     tf.add_to_collection('mode', mode)
 
-    #with tf.Session(graph=graph) as sess:
-    with tf.Session(config=tf.ConfigProto(device_count={'GPU': 0})) as sess:
+    with tf.Session(graph=graph) as sess:
+    #with tf.Session(config=tf.ConfigProto(device_count={'GPU': 0})) as sess:
         ''' Create Session '''
         init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         sess.run(init_op)
@@ -190,7 +213,7 @@ with graph.as_default():
         # Define counters for accumulating measurements
         counter_correct_predictions_training = 0.0
         counter_loss_training = 0.0
-        net_type_var = True
+        net_ty = False
         switch = 0
         try:
             for epoch in range(1, FLAGS.num_epochs + 1):
@@ -208,13 +231,20 @@ with graph.as_default():
                     # Training
                     # Training
                     feed_dict = {mode: True}
-                    if (switch % 2) == 0:
-                        feed_dict = {mode: True}
-                    switch += 1
                     request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
-                    train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
+                    if (epoch > 30):
+                        net_ty = True
+                        feed_dict = {mode: True, net_type: net_ty}
+                        request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss_lstm, train_op_lstm]
+                        train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(request_output, feed_dict=feed_dict)
+                        print('loss_rnn: ' + str(loss_training))
+                    else:
+                        feed_dict = {mode: True, net_type: net_ty}
+                        request_output = [mask, summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
+                        mask_out, train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
                         request_output, feed_dict=feed_dict)
-
+                    
+                    switch += 1
                     ### Update counters
                     counter_correct_predictions_training += correct_predictions_training
                     # counter_correct_predictions_training += jaccard_similarity_score(true_labels, np.argmax(predictions, axis=1))
@@ -231,7 +261,7 @@ with graph.as_default():
                         counter_correct_predictions_training = 0.0
                         counter_loss_training = 0.0
                         # Report : Note that accuracy_avg and loss_avg placeholders are defined just to feed average results to summaries.
-                        summary_report = sess.run(summaries_evaluation, feed_dict={accuracy_avg:accuracy_avg_value_training, loss_avg:loss_avg_value_training, no_gest: True})
+                        summary_report = sess.run(summaries_evaluation, feed_dict={accuracy_avg:accuracy_avg_value_training, loss_avg:loss_avg_value_training, net_type: net_ty})
                         train_summary_writer.add_summary(summary_report, step)
 
         except Exception as e:

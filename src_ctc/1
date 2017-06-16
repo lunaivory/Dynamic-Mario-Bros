@@ -62,7 +62,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
         num_of_frames = sample.getNumFrames()
 
         dense_label = np.zeros(num_of_frames)
-        dense_label[:] = constants_3dcnn.NO_GESTURE
+        dense_label[:] = NO_GESTURE
 
         for gesture_id, start_frame, end_frame in gesture_list:
             dense_label[start_frame:end_frame] = gesture_id

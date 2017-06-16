@@ -46,8 +46,8 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             kernel_size = [3, 3, 3],
             padding = "same",
             activation = tf.nn.relu,
-            kernel_regularizer = slim.l2_regularizer(weight_decay),
-            bias_regularizer = slim.l2_regularizer(weight_decay),
+            #kernel_regularizer = slim.l2_regularizer(weight_decay),
+            #bias_regularizer = slim.l2_regularizer(weight_decay),
             name='conv2')
 
     # Pooling Layer #2
@@ -62,8 +62,8 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             kernel_size=[3, 3, 3],
             padding="same",
             activation=tf.nn.relu,
-            kernel_regularizer=slim.l2_regularizer(weight_decay),
-            bias_regularizer=slim.l2_regularizer(weight_decay),
+            #kernel_regularizer=slim.l2_regularizer(weight_decay),
+            #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv3')
 
     # Convolutional Layer #4
@@ -74,8 +74,8 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             kernel_size=[3, 3, 3],
             padding="same",
             activation=tf.nn.relu,
-            kernel_regularizer=slim.l2_regularizer(weight_decay),
-            bias_regularizer=slim.l2_regularizer(weight_decay),
+            #kernel_regularizer=slim.l2_regularizer(weight_decay),
+            #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv4'
         )
 
@@ -91,8 +91,8 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             kernel_size=[3, 3, 3],
             padding="same",
             activation=tf.nn.relu,
-            kernel_regularizer=slim.l2_regularizer(weight_decay),
-            bias_regularizer=slim.l2_regularizer(weight_decay),
+            #kernel_regularizer=slim.l2_regularizer(weight_decay),
+            #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv5'
         )
 
@@ -104,8 +104,8 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             kernel_size=[3, 3, 3],
             padding="same",
             activation=tf.nn.relu,
-            kernel_regularizer=slim.l2_regularizer(weight_decay),
-            bias_regularizer=slim.l2_regularizer(weight_decay),
+            #kernel_regularizer=slim.l2_regularizer(weight_decay),
+            #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv6'
         )
 
@@ -121,8 +121,8 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             kernel_size=[3, 3, 3],
             padding="same",
             activation=tf.nn.relu,
-            kernel_regularizer=slim.l2_regularizer(weight_decay),
-            bias_regularizer=slim.l2_regularizer(weight_decay),
+            #kernel_regularizer=slim.l2_regularizer(weight_decay),
+            #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv7'
         )
 
@@ -134,8 +134,8 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             kernel_size=[3, 3, 3],
             padding="same",
             activation=tf.nn.relu,
-            kernel_regularizer=slim.l2_regularizer(weight_decay),
-            bias_regularizer=slim.l2_regularizer(weight_decay),
+            #kernel_regularizer=slim.l2_regularizer(weight_decay),
+            #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv8'
         )
 
@@ -153,8 +153,8 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
     # Dense Layer
 
         dense1 = tf.layers.dense(inputs=pool5_flat, units=4096, activation=tf.nn.relu,
-                                 kernel_regularizer=slim.l2_regularizer(weight_decay),
-                                 bias_regularizer=slim.l2_regularizer(weight_decay),
+                                 #kernel_regularizer=slim.l2_regularizer(weight_decay),
+                                 #bias_regularizer=slim.l2_regularizer(weight_decay),
                                  name='dense1')
 
     # Add dropout operation
@@ -164,8 +164,8 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
     # Dense Layer
 
         dense2 = tf.layers.dense(inputs=dropout1, units=4096, activation=tf.nn.relu,
-                                 kernel_regularizer=slim.l2_regularizer(weight_decay),
-                                 bias_regularizer=slim.l2_regularizer(weight_decay),
+                                 #kernel_regularizer=slim.l2_regularizer(weight_decay),
+                                 #bias_regularizer=slim.l2_regularizer(weight_decay),
                                  name='dense2')
 
     # Add dropout operation
