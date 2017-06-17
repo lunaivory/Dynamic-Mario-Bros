@@ -25,6 +25,7 @@ tf.flags.DEFINE_float('dropout_rate', DROPOUT_RATE, 'Dropout rate (default: 0.5)
 
 # Training Parameters
 tf.flags.DEFINE_integer('learning_rate', LEARNING_RATE, 'Batch Size (default: 1e-3)')
+tf.flags.DEFINE_integer('learning_rate_lstm', LEARNING_RATE_LSTM, 'Batch Size (default: 1e-3)')
 tf.flags.DEFINE_integer('batch_size', BATCH_SIZE, 'Batch Size (default: 5)')
 tf.flags.DEFINE_integer('num_epochs', NUM_EPOCHS, 'Number of full passess over whole training data (default: 100)')
 tf.flags.DEFINE_integer('epoch_length', int(len(TRAIN_FILENAMES)/tf.flags.FLAGS.batch_size), 'Batch Size (default: 1e-3)')
@@ -157,7 +158,7 @@ with graph.as_default():
         optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate, name='Adam_3dcnn')
         train_op = optimizer.minimize(loss, global_step=global_step)
 
-        optimizer_lstm = tf.train.AdamOptimizer(FLAGS.learning_rate, name='Adam_lstm')
+        optimizer_lstm = tf.train.AdamOptimizer(FLAGS.learning_rate_lstm, name='Adam_lstm')
         #optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
         #gradients, v = zip(*optimizer_lstm.compute_gradients(loss_lstm))
         
