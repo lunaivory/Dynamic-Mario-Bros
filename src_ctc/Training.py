@@ -126,17 +126,27 @@ with graph.as_default():
 
     # Accuracy calculations
     with tf.name_scope('accuracy'):
+        
         logits = tf.reshape(logits, shape=[-1,21])
         predictions = tf.argmax(logits, 1, name='predictions')
-        predictions = tf.Print(predictions,[predictions], summarize=30, message='P')
-        input_clip_label_op = tf.Print(input_clip_label_op, [input_clip_label_op], summarize=30, message='L')
+        predictions = tf.Print(predictions,[predictions], summarize=30, message='CNN')
+        input_clip_label_op = tf.Print(input_clip_label_op, [input_clip_label_op], summarize=30, message='REF')
+
+        logits_lstm = tf.reshape(logits_lstm, shape=[-1, 21])
+        predictions_lstm = tf.argmax(logits_lstm, 1, name='predictions')
+        predictions_lstm = tf.Print(predictions_lstm, [predictions_lstm], summarize=30, message='RNN')
 
         logits_softmax = tf.nn.softmax(logits)
+        logits_softmax_lstm = tf.nn.softmax(logits_lstm)
         #logits_expanded = tf.stack([tf.squeeze(tf.nn.softmax(logits)) for i in range(FRAMES_PER_CLIP)], axis=1)
         #logits_expanded = tf.reshape(logits_expanded, [FRAMES_PER_VIDEO*BATCH_SIZE, NO_GESTURE])
         correct_predictions = tf.nn.in_top_k(logits_softmax, input_clip_label_op, 1)
         batch_accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
         num_correct_predictions = tf.reduce_sum(tf.cast(correct_predictions, tf.int32))
+
+        correct_predictions_lstm = tf.nn.in_top_k(logits_softmax_lstm, input_clip_label_op, 1)
+        batch_accuracy_lstm = tf.reduce_mean(tf.cast(correct_predictions_lstm, tf.float32))
+        num_correct_predictions_lstm = tf.reduce_sum(tf.cast(correct_predictions_lstm, tf.int32))
 
 
     # Create optimization op.
@@ -156,6 +166,8 @@ with graph.as_default():
         train_op_lstm = optimizer_lstm.minimize(loss, global_step=global_step_lstm)
 
     tf.add_to_collection('predictions', predictions)
+    tf.add_to_collection('predictions_lstm', predictions_lstm)
+    tf.add_to_collection('net_type', net_type)
     tf.add_to_collection('input_samples_op', input_samples_op)
     tf.add_to_collection('mode', mode)
 
@@ -210,21 +222,24 @@ with graph.as_default():
                         break
 
                     step = tf.train.global_step(sess, global_step)
+                    step_lstm = tf.train.global_step(sess, global_step_lstm)
                   
                     if (step % FLAGS.checkpoint_every_step) == 0:
                         ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'model'), global_step)
                         print('Model saved in file : %s' % ckpt_save_path)
+                    if (step_lstm % FLAGS.checkpoint_every_step) == 0:
+                        ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'modelLSTM'), global_step_lstm)
 
                     # Training
                     # Training
                     feed_dict = {mode: True}
-                    request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
-                    if (epoch > 1):
+                    if (epoch > 30):
                         net_ty = True
                         feed_dict = {mode: True, net_type: net_ty}
-                        request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss_lstm, train_op_lstm]
+                        request_output = [summaries_training, num_correct_predictions_lstm, predictions_lstm, input_clip_label_op, loss_lstm, train_op_lstm]
                         train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(request_output, feed_dict=feed_dict)
-                        print('loss_rnn: ' + str(loss_training))
+#                        print(preds)
+#                        print('loss_rnn: ' + str(loss_training))
                     else:
                         feed_dict = {mode: True, net_type: net_ty}
                         request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
@@ -240,7 +255,7 @@ with graph.as_default():
                     train_summary_writer.add_summary(train_summary, step)
 
                     # Print status message.
-                    if (step % FLAGS.print_every_step) == 0:
+                    if (step % FLAGS.print_every_step == 0) or (step_lstm % FLAGS.print_every_step == 0):
                         accuracy_avg_value_training = counter_correct_predictions_training / (FLAGS.print_every_step*BATCH_SIZE*CLIPS_PER_VIDEO)
                         loss_avg_value_training = counter_loss_training / (FLAGS.print_every_step)
                         print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f\n\n' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training), flush=True)
