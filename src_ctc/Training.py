@@ -85,7 +85,7 @@ with graph.as_default():
     # lstm
     with tf.name_scope("LSTM"):
         seq_length =CLIPS_PER_VIDEO # tf.shape(dropout2_flat)[1]
-        lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=1024)
+        lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=LSTM_HIDDEN_UNITS)
         lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, dropout2_flat, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
 
     # Add dropout operation
@@ -94,7 +94,7 @@ with graph.as_default():
 
     # Dense Layer
     with tf.name_scope("dense3"):
-        dense3 = tf.layers.dense(inputs=dropout3, units=1024, activation=tf.nn.relu,
+        dense3 = tf.layers.dense(inputs=dropout3, units=LSTM_HIDDEN_UNITS, activation=tf.nn.relu,
                                  #kernel_regularizer=slim.l2_regularizer(weight_decay),
                                  #bias_regularizer=slim.l2_regularizer(weight_decay)
                                  )
@@ -127,8 +127,8 @@ with graph.as_default():
     with tf.name_scope('accuracy'):
         logits = tf.reshape(logits, shape=[-1,21])
         predictions = tf.argmax(logits, 1, name='predictions')
-        predictions = tf.Print(predictions,[predictions], summarize=30)
-        input_clip_label_op = tf.Print(input_clip_label_op, [input_clip_label_op], summarize=30)
+        predictions = tf.Print(predictions,[predictions], summarize=30, message='P')
+        input_clip_label_op = tf.Print(input_clip_label_op, [input_clip_label_op], summarize=30, message='L')
 
         logits_softmax = tf.nn.softmax(logits)
         #logits_expanded = tf.stack([tf.squeeze(tf.nn.softmax(logits)) for i in range(FRAMES_PER_CLIP)], axis=1)
@@ -158,8 +158,8 @@ with graph.as_default():
     tf.add_to_collection('input_samples_op', input_samples_op)
     tf.add_to_collection('mode', mode)
 
-    with tf.Session(graph=graph) as sess:
-    #with tf.Session(config=tf.ConfigProto(device_count={'GPU': 0})) as sess:
+    #with tf.Session(graph=graph) as sess:
+    with tf.Session(config=tf.ConfigProto(device_count={'GPU': 1})) as sess:
         ''' Create Session '''
         init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         sess.run(init_op)
@@ -218,7 +218,7 @@ with graph.as_default():
                     # Training
                     feed_dict = {mode: True}
                     request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
-                    if (epoch > 30):
+                    if (epoch > 1):
                         net_ty = True
                         feed_dict = {mode: True, net_type: net_ty}
                         request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss_lstm, train_op_lstm]
@@ -242,7 +242,7 @@ with graph.as_default():
                     if (step % FLAGS.print_every_step) == 0:
                         accuracy_avg_value_training = counter_correct_predictions_training / (FLAGS.print_every_step*BATCH_SIZE*CLIPS_PER_VIDEO)
                         loss_avg_value_training = counter_loss_training / (FLAGS.print_every_step)
-                        print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training), flush=True)
+                        print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f\n\n' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training), flush=True)
                         # Reset counters
                         counter_correct_predictions_training = 0.0
                         counter_loss_training = 0.0

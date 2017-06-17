@@ -38,10 +38,16 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
 
         pool1 = tf.layers.max_pooling3d(inputs=conv1, pool_size=[1, 2, 2], strides=[1,2,2], padding="same")
 
+        pool1_norm = tf.layers.batch_normalization(
+            pool1,
+            axis=0,
+            training=mode)
+
+
     # Convolutional Layer #2
 
         conv2 = tf.layers.conv3d(
-            inputs =pool1,
+            inputs =pool1_norm,
             filters = 128,
             kernel_size = [3, 3, 3],
             padding = "same",
@@ -53,11 +59,15 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
     # Pooling Layer #2
 
         pool2 = tf.layers.max_pooling3d(inputs=conv2, pool_size=[2, 2, 2], strides=[2,2,2], padding="same")
+        pool2_norm = tf.layers.batch_normalization(
+            pool2,
+            axis=0,
+            training=mode)
 
     # Convolutional Layer #3
 
         conv3 = tf.layers.conv3d(
-            inputs=pool2,
+            inputs=pool2_norm,
             filters=256,
             kernel_size=[3, 3, 3],
             padding="same",
@@ -66,10 +76,14 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv3')
 
+        conv3_norm = tf.layers.batch_normalization(
+            conv3,
+            axis=0,
+            training=mode)
     # Convolutional Layer #4
 
         conv4 = tf.layers.conv3d(
-            inputs=conv3,
+            inputs=conv3_norm,
             filters=256,
             kernel_size=[3, 3, 3],
             padding="same",
@@ -82,11 +96,15 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
     # Pooling Layer #3
 
         pool3 = tf.layers.max_pooling3d(inputs=conv4, pool_size=[2, 2, 2], strides=[2,2,2], padding="same")
+        pool3_norm = tf.layers.batch_normalization(
+            pool3,
+            axis=0,
+            training=mode)
 
     # Convolutional Layer #5
 
         conv5 = tf.layers.conv3d(
-            inputs=pool3,
+            inputs=pool3_norm,
             filters=512,
             kernel_size=[3, 3, 3],
             padding="same",
@@ -95,11 +113,15 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv5'
         )
+        conv5_norm = tf.layers.batch_normalization(
+            conv5,
+            axis=0,
+            training=mode)
 
     # Convolutional Layer #6
 
         conv6 = tf.layers.conv3d(
-            inputs=conv5,
+            inputs=conv5_norm,
             filters=512,
             kernel_size=[3, 3, 3],
             padding="same",
@@ -112,11 +134,15 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
     # Pooling Layer #4
 
         pool4 = tf.layers.max_pooling3d(inputs=conv6, pool_size=[2, 2, 2], strides=[2,2,2], padding="same")
+        pool4_norm = tf.layers.batch_normalization(
+            pool4,
+            axis=0,
+            training=mode)
 
     # Convolutional Layer #7
 
         conv7 = tf.layers.conv3d(
-            inputs=pool4,
+            inputs=pool4_norm,
             filters=512,
             kernel_size=[3, 3, 3],
             padding="same",
@@ -125,11 +151,15 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv7'
         )
+        conv7_norm = tf.layers.batch_normalization(
+            conv7,
+            axis=0,
+            training=mode)
 
     # Convolutional Layer #8
 
         conv8 = tf.layers.conv3d(
-            inputs=conv7,
+            inputs=conv7_norm,
             filters=512,
             kernel_size=[3, 3, 3],
             padding="same",
@@ -138,17 +168,26 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
             #bias_regularizer=slim.l2_regularizer(weight_decay),
             name='conv8'
         )
+        conv8_norm = tf.layers.batch_normalization(
+            conv8,
+            axis=0,
+            training=mode)
 
     # last max pooling no stride on temporal dim since we are using clips of 8 frames and here we reached dim 1, in
     # the paper they dont use this layer but I think we should add it otherwise tensor too large
     # Pooling Layer #5
 
-        pool5 = tf.layers.max_pooling3d(inputs=conv8, pool_size=[1, 2, 2], strides=[1, 2, 2], padding="same")
+        pool5 = tf.layers.max_pooling3d(inputs=conv8_norm, pool_size=[1, 2, 2], strides=[1, 2, 2], padding="same")
+
+        pool5_norm = tf.layers.batch_normalization(
+            pool5,
+            axis=0,
+            training=mode)
 
     # Flatten tensor into a batch of vectors
     # shape=[batch_size, max_time, flat
 
-        pool5_flat = tf.reshape(pool5, shape=[-1, 4 * 4 * 512])
+        pool5_flat = tf.reshape(pool5_norm, shape=[-1, 4 * 4 * 512])
 
     # Dense Layer
 
