@@ -30,7 +30,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
         gesture_list = sample.getGestures()
         num_of_frames = sample.getNumFrames()
 
-        frames_range = list(np.arange(0, num_of_frames, 400)[:-1])
+        frames_range = list(np.arange(0, num_of_frames, FRAMES_PER_VIDEO_PP)[:-1])
         frames_range.append(num_of_frames)
 
         labels = []

@@ -20,8 +20,8 @@ def video_preprocessing_training_op(video_op):
 
         # take random crop of 320 frames from video
         zero_tensor = tf.zeros(shape=[1], dtype=tf.int32)
-        jittering = tf.random_uniform(shape=[1], minval=0, maxval=int((FRAMES_PER_VIDEO_PP-FRAMES_PER_VIDEO)/8), dtype=tf.int32)
-        jittering_dense = tf.multiply(jittering, 8)
+        jittering = tf.random_uniform(shape=[1], minval=0, maxval=int((FRAMES_PER_VIDEO_PP-FRAMES_PER_VIDEO)/FRAMES_PER_CLIP), dtype=tf.int32)
+        jittering_dense = tf.multiply(jittering, FRAMES_PER_CLIP)
         begin_jittering = tf.squeeze(tf.stack([jittering_dense, zero_tensor, zero_tensor, zero_tensor]))
         processed_video_jittering = tf.slice(clip_op, begin=begin_jittering, size=JITTERING)
 
@@ -100,13 +100,13 @@ def read_and_decode(filename_queue):
         # get dense labels to calculate accuracy
         seq_label_dense = tf.decode_raw(features_encoded['dense_label'], tf.int32)
         seq_label_dense = tf.reshape(seq_label_dense, [-1])
-        jittering_dense = tf.multiply(jittering, 8)
+        jittering_dense = tf.multiply(jittering, FRAMES_PER_CLIP)
         seq_label_dense_slice = tf.slice(seq_label_dense, begin=jittering_dense, size=[FRAMES_PER_VIDEO])
 
         # get per clip labels to train 3dcnn
         seq_label_clip = tf.decode_raw(features_encoded['clip_label'], tf.int32)
         seq_label_clip = tf.reshape(seq_label_clip, [-1])
-        seq_label_clip_slice = tf.slice(seq_label_clip, begin=jittering, size=[int(FRAMES_PER_VIDEO/8)])
+        seq_label_clip_slice = tf.slice(seq_label_clip, begin=jittering, size=[int(FRAMES_PER_VIDEO/FRAMES_PER_CLIP)])
 
         return seq_rgb_pp, seq_label, seq_label_dense_slice, seq_label_clip_slice
 

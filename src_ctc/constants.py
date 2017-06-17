@@ -14,9 +14,9 @@ RAW_DATA_PATH = '../data_pp/'
 TFRecord_DATA_PATH = '../tf-data/'
 
 # use clips of 80 frames like they did in the paper
-FRAMES_PER_VIDEO_PP = 400
+FRAMES_PER_VIDEO_PP = 200 # FRAMES_PER_VIDEO_PP > FRAMES_PER_VIDEO
 FRAMES_PER_CLIP = 8 
-FRAMES_PER_VIDEO = 240 #80
+FRAMES_PER_VIDEO = 120 #80
 CLIPS_PER_VIDEO = int(FRAMES_PER_VIDEO / FRAMES_PER_CLIP)
 
 """preprocesssing parameters"""
@@ -38,7 +38,7 @@ CHECKPOINT_EVERY_STEP = 500
 
 
 ''' LSTM parameters '''
-LSTM_HIDDEN_UNIT = 512
+LSTM_HIDDEN_UNITS = 512
 
 QUEUE_CAPACITY = int(BATCH_SIZE * 10)
 

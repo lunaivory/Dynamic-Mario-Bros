@@ -1,5 +1,6 @@
 ''' Constant Settings  '''
 '''#####################'''
+import constants
 
 # dont use sample 091 since there is a mistake with the labels
 TRAIN_ID = range(2,3)         # Raw file format : Sample0001.zip - Sample0470.zip
@@ -30,7 +31,7 @@ NUM_OF_NO_GESTURE_CLIPS = 3
 '''Training parameters'''
 DROPOUT_RATE =0.5 #0.75
 LEARNING_RATE = 3e-5 #3e-4
-BATCH_SIZE = 30 # 5 gestures per batch
+BATCH_SIZE = constants.FRAMES_PER_VIDEO/FRAME_PER_CLIP #30 # 5 gestures per batch
 NUM_EPOCHS = 10000
 PRINT_EVERY_STEP = 5 #200
 EVALUATE_EVERY_STEP = 1000

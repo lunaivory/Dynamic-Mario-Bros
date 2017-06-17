@@ -72,6 +72,7 @@ with graph.as_default():
 
     # Returns 'logits' layer, the top-most layer of the network
     dropout2_flat = model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode)
+
     #logits = tf.layers.dense(inputs=dropout2_flat, units=21)
 
     cnn_representations = tf.map_fn(lambda x: model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode, reuse=True),
