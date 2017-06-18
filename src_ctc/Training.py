@@ -60,6 +60,7 @@ with graph.as_default():
     #input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op = util_training.input_pipeline(TRAIN_FILENAMES)
     # Pass True in when it is in the trainging mode
     mode = tf.placeholder(tf.bool, name='mode')
+    mode_lstm = tf.placeholder(tf.bool, name='mode_lstm')
     net_type = tf.placeholder(tf.bool, name='net_type')
     
     input_samples_op, input_labels_op, input_dense_label_op, input_clip_label_op = tf.cond(
@@ -92,7 +93,7 @@ with graph.as_default():
 
     # Add dropout operation
     with tf.name_scope("dropout3"):
-        dropout3 = tf.layers.dropout(inputs=lstm_outputs, rate=DROPOUT_RATE, training=mode)
+        dropout3 = tf.layers.dropout(inputs=lstm_outputs, rate=DROPOUT_RATE, training=mode_lstm)
 
     # Dense Layer
     with tf.name_scope("dense3"):
@@ -103,7 +104,7 @@ with graph.as_default():
 
     # Add dropout operation
     with tf.name_scope("dropout4"):
-        dropout4 = tf.layers.dropout(inputs=dense3, rate=DROPOUT_RATE, training=mode)
+        dropout4 = tf.layers.dropout(inputs=dense3, rate=DROPOUT_RATE, training=mode_lstm)
 
     with tf.name_scope("logits"):
         logits_lstm = tf.layers.dense(inputs=dropout4, units=21)
@@ -171,6 +172,7 @@ with graph.as_default():
     tf.add_to_collection('net_type', net_type)
     tf.add_to_collection('input_samples_op', input_samples_op)
     tf.add_to_collection('mode', mode)
+    tf.add_to_collection('mode_lstm', mode_lstm)
 
     #with tf.Session(graph=graph) as sess:
     with tf.Session(config=tf.ConfigProto(device_count={'GPU': 1})) as sess:
@@ -215,6 +217,7 @@ with graph.as_default():
         counter_loss_training = 0.0
         net_ty = False
         switch = 0
+        prev_accuracy = 0
         try:
             for epoch in range(1, FLAGS.num_epochs + 1):
 
@@ -227,22 +230,20 @@ with graph.as_default():
                   
                     if (step % FLAGS.checkpoint_every_step) == 0:
                         ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'model'), global_step)
-                        print('Model saved in file : %s' % ckpt_save_path)
+                        print('CNN Model saved in file : %s' % ckpt_save_path)
                     if (step_lstm % FLAGS.checkpoint_every_step) == 0:
                         ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'modelLSTM'), global_step_lstm)
+                        print('RNN Model saved in file : %s' % ckpt_save_path)
 
-                    # Training
-                    # Training
-                    feed_dict = {mode: True}
-                    if (epoch > 30):
+                    if (prev_accuracy > 0.85):
                         net_ty = True
-                        feed_dict = {mode: True, net_type: net_ty}
-                        request_output = [summaries_training, num_correct_predictions_lstm, predictions_lstm, input_clip_label_op, loss_lstm, train_op_lstm]
-                        train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(request_output, feed_dict=feed_dict)
+                        feed_dict = {mode: False, mode_lstm: True, net_type: net_ty}
+                        request_output = [summaries_training, num_correct_predictions_lstm, predictions, predictions_lstm, input_clip_label_op, loss_lstm, train_op_lstm]
+                        train_summary, correct_predictions_training, pred_cnn, preds, true_labels, loss_training, _ = sess.run(request_output, feed_dict=feed_dict)
 #                        print(preds)
 #                        print('loss_rnn: ' + str(loss_training))
                     else:
-                        feed_dict = {mode: True, net_type: net_ty}
+                        feed_dict = {mode: True, mode_lstm:False, net_type: net_ty}
                         request_output = [summaries_training, num_correct_predictions, predictions, input_clip_label_op, loss, train_op]
                         train_summary, correct_predictions_training, preds, true_labels, loss_training, _ = sess.run(
                         request_output, feed_dict=feed_dict)
@@ -259,7 +260,11 @@ with graph.as_default():
                     if (step % FLAGS.print_every_step == 0) or (step_lstm % FLAGS.print_every_step == 0):
                         accuracy_avg_value_training = counter_correct_predictions_training / (FLAGS.print_every_step*BATCH_SIZE*CLIPS_PER_VIDEO)
                         loss_avg_value_training = counter_loss_training / (FLAGS.print_every_step)
-                        print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f\n\n' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training), flush=True)
+                        if net_ty is False:
+                            prev_accuracy = accuracy_avg_value_training
+                            print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f\n\n' % (epoch, step, accuracy_avg_value_training, loss_avg_value_training), flush=True)
+                        else:
+                            print('[%d/%d] [Training] Accuracy: %.3f, Loss: %.3f\n\n' % (epoch, step_lstm, accuracy_avg_value_training, loss_avg_value_training), flush=True)
                         # Reset counters
                         counter_correct_predictions_training = 0.0
                         counter_loss_training = 0.0
