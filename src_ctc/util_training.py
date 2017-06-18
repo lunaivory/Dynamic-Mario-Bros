@@ -67,6 +67,15 @@ def video_preprocessing_training_op(video_op):
         #mean, var = tf.nn.moments(processed_video, axes=[0,1,2,3])
         #processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
 
+        # normalise per clip
+        processed_video = tf.map_fn(lambda x: tf.nn.batch_normalization(x,
+                                                    mean = tf.nn.moments(x, axes=[0,1,2,3])[0],
+                                                    variance  = tf.nn.moments(x, axes=[0,1,2,3])[1],
+                                                    offset = None, scale=None, variance_epsilon=1e-10),
+                                                elems = processed_video,
+                                                dtype = tf.float32,
+                                                back_prop = False)
+
     return processed_video, jittering
     
 def read_and_decode(filename_queue):

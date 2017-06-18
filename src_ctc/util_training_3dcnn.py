@@ -67,7 +67,6 @@ def video_preprocessing_training_op(video_op):
         # processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
 
         # normalise per clip
-        processed_video = tf.cast(processed_video, tf.float32)
         processed_video = tf.map_fn(lambda x: tf.nn.batch_normalization(x,
                                                     mean = tf.nn.moments(x, axes=[0,1,2,3])[0],
                                                     variance  = tf.nn.moments(x, axes=[0,1,2,3])[1],
