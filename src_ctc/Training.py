@@ -80,16 +80,16 @@ with graph.as_default():
     cnn_representations = tf.map_fn(lambda x: model.dynamic_mario_bros(input_samples_op, FLAGS.dropout_rate, mode, reuse=True),
                                          elems=dropout2_flat,
                                          dtype=tf.float32,
-                                         back_prop=True)
+                                         back_prop=False)
 
-    logits = tf.layers.dense(inputs=tf.reshape(cnn_representations, shape=[CLIPS_PER_VIDEO,-1]), units=21)
+    logits = tf.layers.dense(inputs=tf.reshape(dropout2_flat, shape=[CLIPS_PER_VIDEO,-1]), units=21)
 
     cnn_representations = tf.reshape(cnn_representations, shape=[1, CLIPS_PER_VIDEO, -1])
     # lstm
     with tf.name_scope("LSTM"):
         seq_length =CLIPS_PER_VIDEO # tf.shape(dropout2_flat)[1]
         lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=LSTM_HIDDEN_UNITS)
-        lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, dropout2_flat, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
+        lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, cnn_representations, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
 
     # Add dropout operation
     with tf.name_scope("dropout3"):
@@ -135,7 +135,7 @@ with graph.as_default():
         input_clip_label_op = tf.Print(input_clip_label_op, [input_clip_label_op], summarize=30, message='REF')
 
         logits_lstm = tf.reshape(logits_lstm, shape=[-1, 21])
-        predictions_lstm = tf.argmax(logits_lstm, 1, name='predictions')
+        predictions_lstm = tf.argmax(logits_lstm, 1, name='predictions_lstm')
         predictions_lstm = tf.Print(predictions_lstm, [predictions_lstm], summarize=30, message='RNN')
 
         logits_softmax = tf.nn.softmax(logits)
@@ -153,19 +153,19 @@ with graph.as_default():
 
     # Create optimization op.
     with tf.name_scope('train'):
-        learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step,
-                                decay_steps = 3 * FLAGS.epoch_length, decay_rate=0.5, staircase=True)
+        learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step_lstm,
+                                decay_steps = 1 * FLAGS.epoch_length, decay_rate=0.9, staircase=True)
 
         optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate, name='Adam_3dcnn')
         train_op = optimizer.minimize(loss, global_step=global_step)
 
         optimizer_lstm = tf.train.AdamOptimizer(FLAGS.learning_rate_lstm, name='Adam_lstm')
-        #optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
-        #gradients, v = zip(*optimizer_lstm.compute_gradients(loss_lstm))
+        #optimizer_lstm = tf.train.MomentumOptimizer(learning_rate, 0.9)
+        gradients, v = zip(*optimizer_lstm.compute_gradients(loss_lstm)[40:])
         
         #clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
-        #train_op_lstm = optimizer_lstm.apply_gradients(zip(clipped_gradients, v), global_step=global_step_lstm)
-        train_op_lstm = optimizer_lstm.minimize(loss, global_step=global_step_lstm)
+        train_op_lstm = optimizer_lstm.apply_gradients(zip(gradients, v), global_step=global_step_lstm)
+        #train_op_lstm = optimizer_lstm.minimize(loss, global_step=global_step_lstm)
 
     tf.add_to_collection('predictions', predictions)
     tf.add_to_collection('predictions_lstm', predictions_lstm)
@@ -235,7 +235,7 @@ with graph.as_default():
                         ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'modelLSTM'), global_step_lstm)
                         print('RNN Model saved in file : %s' % ckpt_save_path)
 
-                    if (prev_accuracy > 0.85):
+                    if (epoch > 70):
                         net_ty = True
                         feed_dict = {mode: False, mode_lstm: True, net_type: net_ty}
                         request_output = [summaries_training, num_correct_predictions_lstm, predictions, predictions_lstm, input_clip_label_op, loss_lstm, train_op_lstm]
