@@ -3,7 +3,7 @@
 '''#####################'''
 
 # dont use sample 091 since there is a mistake with the labels
-TRAIN_ID = range(1, 100)         # Raw file format : Sample0001.zip - Sample0470.zip
+TRAIN_ID = range(2, 10)         # Raw file format : Sample0001.zip - Sample0470.zip
 VALIDATION_ID = range(475,478)  # Raw file format : Sample0471.zip - Sample0700.zip
 TEST_ID = range(701,751)        # Raw file format : Sample0701.zip - Sample0941.zip
 
@@ -17,7 +17,7 @@ TFRecord_DATA_PATH = '../tf-data/'
 FRAMES_PER_VIDEO_PP = 200 # FRAMES_PER_VIDEO_PP > FRAMES_PER_VIDEO
 FRAMES_PER_CLIP = 8 
 FRAMES_PER_VIDEO = 120 #80
-CLIPS_PER_VIDEO = int(FRAMES_PER_VIDEO / FRAMES_PER_CLIP)
+CLIPS_PER_VIDEO = int(FRAMES_PER_VIDEO_PP / FRAMES_PER_CLIP)
 
 """preprocesssing parameters"""
 CROP = (CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3) # 1 based crop shape for tf.slice
@@ -36,6 +36,8 @@ NUM_EPOCHS = 100000
 PRINT_EVERY_STEP = 20 #200
 EVALUATE_EVERY_STEP = 1000
 CHECKPOINT_EVERY_STEP = 500
+WEIGHT_DECAY_CNN = 0.0001
+WEIGHT_DECAY_RNN = 0.0001
 
 
 ''' LSTM parameters '''
