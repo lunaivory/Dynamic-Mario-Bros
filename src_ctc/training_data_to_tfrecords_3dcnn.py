@@ -52,7 +52,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
 
         cut_dense_labels = []
         cut_clip_labels = []
-        cut_vid = []
+        cut_vid = np.zeros([8, 150, 120, 3], np.uint8)
 
         for gesture_id, start_frame, end_frame in gesture_list:
             labels += [gesture_id]
@@ -64,18 +64,21 @@ def get_data_training(path, data_type, write_path, sample_ids):
             n = np.sum(lab_truth)
             if n > 5:
                 cut_clip_labels.append(clip_dense_labels_slice[lab_truth][0])
-                cut_vid.append(vid[clip_label : clip_label + FRAMES_PER_CLIP])
+                #cut_vid+= [vid[clip_label : clip_label + FRAMES_PER_CLIP]]
+                cut_vid = np.concatenate((cut_vid, vid[clip_label : clip_label + FRAMES_PER_CLIP]), axis=0)
                 cut_dense_labels += [clip_dense_labels_slice[lab_truth][0]]*FRAMES_PER_CLIP
                 gesture_cnt[0] += 1
             elif gesture_cnt[0] > 20 * gesture_cnt[1]:
                 cut_clip_labels.append(NO_GESTURE)
-                cut_vid.append(vid[clip_label : clip_label + FRAMES_PER_CLIP])
+                cut_vid = np.concatenate((cut_vid, vid[clip_label : clip_label + FRAMES_PER_CLIP]), axis=0)
+                #cut_vid += [vid[clip_label : clip_label + FRAMES_PER_CLIP]]
                 cut_dense_labels += [NO_GESTURE] * FRAMES_PER_CLIP
                 gesture_cnt[1] += 1
 
         cut_clip_labels = np.asarray(cut_clip_labels, dtype=np.int32)
-        cut_vid = np.asarray(cut_vid, dtype = np.uint8)
-        cut_vid = np.reshape(cut_vid, (cut_vid.shape[0] * cut_vid.shape[1], cut_vid.shape[2], cut_vid.shape[3], cut_vid.shape[4]))
+        cut_vid = cut_vid[8:]
+        #cut_vid = np.asarray(cut_vid, dtype = np.uint8)
+        #cut_vid = np.reshape(cut_vid, (cut_vid.shape[0] * cut_vid.shape[1], cut_vid.shape[2], cut_vid.shape[3], cut_vid.shape[4]))
         cut_dense_labels = np.asarray(cut_dense_labels, dtype=np.int32)
 
 
