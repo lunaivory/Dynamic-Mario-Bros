@@ -163,8 +163,8 @@ with graph.as_default():
         #optimizer_lstm = tf.train.MomentumOptimizer(learning_rate, 0.9)
         gradients, v = zip(*optimizer_lstm.compute_gradients(loss_lstm)[40:])
         
-        #clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
-        train_op_lstm = optimizer_lstm.apply_gradients(zip(gradients, v), global_step=global_step_lstm)
+        clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
+        train_op_lstm = optimizer_lstm.apply_gradients(zip(clipped_gradients, v), global_step=global_step_lstm)
         #train_op_lstm = optimizer_lstm.minimize(loss, global_step=global_step_lstm)
 
     tf.add_to_collection('predictions', predictions)
@@ -235,7 +235,7 @@ with graph.as_default():
                         ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'modelLSTM'), global_step_lstm)
                         print('RNN Model saved in file : %s' % ckpt_save_path)
 
-                    if (epoch > 70):
+                    if (prev_accuracy > 0.90):
                         net_ty = True
                         feed_dict = {mode: False, mode_lstm: True, net_type: net_ty}
                         request_output = [summaries_training, num_correct_predictions_lstm, predictions, predictions_lstm, input_clip_label_op, loss_lstm, train_op_lstm]

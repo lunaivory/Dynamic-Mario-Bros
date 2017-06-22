@@ -27,10 +27,10 @@ def video_preprocessing_training_op(video_op):
 
         #### Take random crop of dimension CROP=(CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3)
 
-        #col_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[0] - CROP[1]), dtype=tf.int32)
-        #row_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[1] - CROP[2]), dtype=tf.int32)
-        col_crop_idx = tf.constant(int((IMAGE_SIZE[0] - CROP[1])/2), shape=[1], dtype=tf.int32)
-        row_crop_idx = tf.constant(int((IMAGE_SIZE[1] - CROP[2])/2), shape=[1], dtype=tf.int32)
+        col_crop_idx = tf.random_uniform(shape=[1],minval=17, maxval=21, dtype=tf.int32)
+        row_crop_idx = tf.random_uniform(shape=[1],minval=0, maxval=(IMAGE_SIZE[1] - CROP[2]), dtype=tf.int32)
+        #col_crop_idx = tf.constant(int((IMAGE_SIZE[0] - CROP[1])/2), shape=[1], dtype=tf.int32)
+        #row_crop_idx = tf.constant(int((IMAGE_SIZE[1] - CROP[2])/2), shape=[1], dtype=tf.int32)
         begin_crop = tf.squeeze(tf.stack([zero_tensor, col_crop_idx, row_crop_idx, zero_tensor]))
         processed_video = tf.slice(processed_video_jittering, begin=begin_crop, size=constants_3dcnn.CROP)
 
