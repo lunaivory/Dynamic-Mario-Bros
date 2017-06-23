@@ -19,7 +19,7 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
     
     Output logits [batch_size, num_clips(250), num_classes+2]
     """
-    weight_decay = 0.0 # WEIGHT_DECAY_CNN
+    weight_decay = WEIGHT_DECAY_CNN
     # TODO they dont mention any activations for the conv layers, to check
     with tf.variable_scope("3Dcnn_model", reuse=reuse, initializer=tf.contrib.layers.xavier_initializer()):
     #with tf.name_scope("3Dcnn_model"):
