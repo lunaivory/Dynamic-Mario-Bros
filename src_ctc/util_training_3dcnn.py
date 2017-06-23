@@ -68,13 +68,26 @@ def video_preprocessing_training_op(video_op):
         # processed_video = tf.nn.batch_normalization(processed_video, mean=mean, variance=var, offset=None, scale=None, variance_epsilon=1e-10)
 
         # normalise per clip
-        processed_video = tf.map_fn(lambda x: tf.nn.batch_normalization(x,
-                                                    mean = tf.nn.moments(x, axes=[0,1,2,3])[0],
-                                                    variance  = tf.nn.moments(x, axes=[0,1,2,3])[1],
-                                                    offset = None, scale=None, variance_epsilon=1e-10),
-                                                elems = processed_video,
-                                                dtype = tf.float32,
-                                                back_prop = False)
+        processed_video = tf.reshape(processed_video,
+                                     [constants_3dcnn.CLIPS_PER_VIDEO, 1, constants_3dcnn.FRAMES_PER_CLIP, CROP[1],
+                                      CROP[2], CROP[3]])
+        processed_video_list = [tf.nn.batch_normalization(i,
+                                                          mean=tf.nn.moments(i, axes=[0, 1, 2, 3])[0],
+                                                          variance=tf.nn.moments(i, axes=[0, 1, 2, 3])[1],
+                                                          offset=None, scale=None, variance_epsilon=1e-10)
+                                for i in tf.unstack(processed_video)]
+
+        processed_video = tf.stack(processed_video_list)
+        processed_video = tf.reshape(processed_video,
+                                     [constants_3dcnn.CLIPS_PER_VIDEO, constants_3dcnn.FRAMES_PER_CLIP, CROP[1],
+                                      CROP[2], CROP[3]])
+        #processed_video = tf.map_fn(lambda x: tf.nn.batch_normalization(x,
+        #                                            mean = tf.nn.moments(x, axes=[0,1,2,3])[0],
+        #                                            variance  = tf.nn.moments(x, axes=[0,1,2,3])[1],
+        #                                            offset = None, scale=None, variance_epsilon=1e-10),
+        #                                        elems = processed_video,
+        #                                        dtype = tf.float32,
+        #                                        back_prop = False)
 
     return processed_video
     
