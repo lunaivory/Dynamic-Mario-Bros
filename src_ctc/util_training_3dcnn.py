@@ -21,9 +21,10 @@ def video_preprocessing_training_op(video_op):
 
         # +- 3frames of jittering
         zero_tensor = tf.zeros(shape=[1], dtype=tf.int32)
-        jittering = tf.random_uniform(shape=[1], minval=0, maxval=6, dtype=tf.int32)
-        begin_jittering = tf.squeeze(tf.stack([jittering, zero_tensor, zero_tensor, zero_tensor]))
-        processed_video_jittering = tf.slice(clip_op, begin=begin_jittering, size=constants_3dcnn.JITTERING)
+        processed_video_jittering = clip_op
+        # jittering = tf.random_uniform(shape=[1], minval=0, maxval=6, dtype=tf.int32)
+        # begin_jittering = tf.squeeze(tf.stack([jittering, zero_tensor, zero_tensor, zero_tensor]))
+        # processed_video_jittering = tf.slice(clip_op, begin=begin_jittering, size=constants_3dcnn.JITTERING)
 
         #### Take random crop of dimension CROP=(CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3)
 

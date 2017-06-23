@@ -68,7 +68,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
                 cut_vid = np.concatenate((cut_vid, vid[clip_label : clip_label + FRAMES_PER_CLIP]), axis=0)
                 cut_dense_labels += [clip_dense_labels_slice[lab_truth][0]]*FRAMES_PER_CLIP
                 gesture_cnt[0] += 1
-            elif gesture_cnt[0] > 20 * gesture_cnt[1]:
+            elif gesture_cnt[0] > 15* gesture_cnt[1]:
                 cut_clip_labels.append(NO_GESTURE)
                 cut_vid = np.concatenate((cut_vid, vid[clip_label : clip_label + FRAMES_PER_CLIP]), axis=0)
                 #cut_vid += [vid[clip_label : clip_label + FRAMES_PER_CLIP]]
@@ -85,7 +85,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
         num_of_frames = cut_dense_labels.shape[0]
 
         frames_range = list(np.arange(0, num_of_frames, FRAMES_PER_VIDEO_PP)[:-1])
-        frames_range.append(num_of_frames)
+        #frames_range.append(num_of_frames)
 
         for id in range(len(frames_range[:-1])):
             start = frames_range[id]

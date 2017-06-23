@@ -19,7 +19,7 @@ import constants_3dcnn
 
 
 if __name__ == '__main__':
-    #training_data_to_tfrecords_3dcnn_last.get_data_training(constants.RAW_DATA_PATH, 'Train_3dcnn', constants.TFRecord_DATA_PATH, constants_3dcnn.TRAIN_ID)
+    training_data_to_tfrecords_3dcnn_last.get_data_training(constants.RAW_DATA_PATH, 'Train_3dcnn', constants.TFRecord_DATA_PATH, constants_3dcnn.TRAIN_ID)
     training_data_to_tfrecords_3dcnn.get_data_training(constants.RAW_DATA_PATH, 'Train', constants.TFRecord_DATA_PATH, constants.TRAIN_ID)
     #training_data_to_tfrecords_3dcnn.get_data_training(RAW_DATA_PATH, 'Test', TFRecord_DATA_PATH, constants.TEST_ID)
     # get_data_val(RAW_DATA_PATH, 'Validation', TFRecord_DATA_PATH, VALIDATION_ID, label_path = RAW_DATA_PATH + 'Validation_reference/')
