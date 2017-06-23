@@ -18,10 +18,10 @@ from constants import *
 from sklearn.metrics import jaccard_similarity_score
 
 
-LOG_DIR = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1498164105'
+LOG_DIR = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1498207378'
 # LOG_DIR = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1497471639/'
-META_GRAPH_FILE = 'modelLSTM-22000.meta'
-MODEL_CP_PATH = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1498164105'
+META_GRAPH_FILE = 'modelLSTM-32000.meta'
+MODEL_CP_PATH = '/home/lc/Dynamic-Mario-Bros/src_ctc/runs/1498207378'
 # MODEL_CP_PATH = '/home/federico/Dynamic-Mario-Bros/src_ctc/runs/1498164105/'
 OUTPUT_PATH = '../evaluation/prediction/'
 REF_PATH = '../evaluation/reference/'
@@ -151,8 +151,8 @@ with tf.Session() as sess:
             net_ty = True
             feed_dict = {mode: False, mode_lstm: True, net_type: net_ty, input_samples_op:batch_clips}
             preds, logs = sess.run([predictions_lstm, logits_soft], feed_dict = feed_dict) #[0].tolist()
-            preds = np.argmax(logs, axis=1)
-            preds[np.max(logs, axis=1) < 0.2] = NO_GESTURE - 1
+            #preds = np.argmax(logs, axis=1)
+            #preds[np.max(logs, axis=1) < 0.2] = NO_GESTURE - 1
             results += preds.tolist()
 
         print (results)
