@@ -161,7 +161,7 @@ with graph.as_default():
 
         optimizer_lstm = tf.train.AdamOptimizer(FLAGS.learning_rate_lstm, name='Adam_lstm')
         #optimizer_lstm = tf.train.MomentumOptimizer(learning_rate, 0.9)
-        gradients, v = zip(*optimizer_lstm.compute_gradients(loss_lstm)[40:])
+        gradients, v = zip(*optimizer_lstm.compute_gradients(loss_lstm)[22:])
         
         clipped_gradients, _ = tf.clip_by_global_norm(gradients, 10)
         train_op_lstm = optimizer_lstm.apply_gradients(zip(clipped_gradients, v), global_step=global_step_lstm)
