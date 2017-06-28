@@ -92,12 +92,12 @@ with graph.as_default():
         lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, cnn_representations, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
 
     # Add dropout operation
-    with tf.name_scope("dropout3"):
-        dropout3 = tf.layers.dropout(inputs=lstm_outputs, rate=DROPOUT_RATE, training=mode_lstm)
+    #with tf.name_scope("dropout3"):
+    #    dropout3 = tf.layers.dropout(inputs=lstm_outputs, rate=DROPOUT_RATE, training=mode_lstm)
 
     # Dense Layer
     with tf.name_scope("dense3"):
-        dense3 = tf.layers.dense(inputs=dropout3, units=LSTM_HIDDEN_UNITS, activation=tf.nn.relu,
+        dense3 = tf.layers.dense(inputs=lstm_outputs, units=512, activation=tf.nn.relu,
                                  #kernel_regularizer=slim.l2_regularizer(weight_decay),
                                  #bias_regularizer=slim.l2_regularizer(weight_decay)
                                  )
@@ -235,7 +235,7 @@ with graph.as_default():
                         ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'modelLSTM'), global_step_lstm)
                         print('RNN Model saved in file : %s' % ckpt_save_path)
 
-                    if (prev_accuracy > 0.80):
+                    if (prev_accuracy > 0.10):
                         net_ty = True
                         feed_dict = {mode: False, mode_lstm: True, net_type: net_ty}
                         request_output = [summaries_training, num_correct_predictions_lstm, predictions, predictions_lstm, input_clip_label_op, loss_lstm, train_op_lstm]

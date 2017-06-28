@@ -12,7 +12,7 @@ import math
 '''############################'''
 '''# Self-defined library     #'''
 '''############################'''
-from constants_ctc import *
+from constants import *
 
 '''#####################'''
 '''#  Create TFRecord  #'''
@@ -34,13 +34,13 @@ def get_padding(video, gestures):
     start_frame = time_intervals[idx_1]
     end_frame = time_intervals[idx_2]
 
-    padding = list(video[start_frame:end_frame - 22])
+    padding = list(video[start_frame:end_frame])
 
     # make sure padding  has enough frame to not run in out of range problems later
     while len(padding) < int(FRAMES_PER_VIDEO / 2):
         padding *= 2
 
-    padding = padding[:int(FRAMES_PER_VIDEO / 2)]
+    padding = padding[:int(FRAMES_PER_VIDEO)]
 
     return padding
 
@@ -123,6 +123,11 @@ def get_data_training(path, data_type, write_path, sample_ids):
             end_padding = 0
             clip_label_video = []
 
+        #add also padding video
+        videos += [np.asarray(padding, dtype=np.uint8)]
+        dense_label += [[NO_GESTURE]*FRAMES_PER_VIDEO]
+        clip_label += [[NO_GESTURE]*int(FRAMES_PER_VIDEO/FRAMES_PER_CLIP)]
+
         for gesture_video, label, ind in zip(videos, labels, range(len(labels))):
             '''Create TFRecord structure'''
             # context = tf.train.Features(feature={'sample_id': util._int64_feature(sample_id),
@@ -146,4 +151,5 @@ def get_data_training(path, data_type, write_path, sample_ids):
             tf_writer = tf.python_io.TFRecordWriter(filename, options=tf_write_option)
             tf_writer.write(sequence_example.SerializeToString())
             tf_writer.close()
+
 
