@@ -83,13 +83,20 @@ def get_data_training(path, data_type, write_path, sample_ids):
 
         id = 0
         for rang in range:
+            counter = np.zeros(shape=22)
             clip = vid[rang:(rang+constants_3dcnn.FRAMES_PER_CLIP_PP)]
             clip_dense_label = dense_label[rang:(rang+constants_3dcnn.FRAMES_PER_CLIP_PP)]
             check = np.sum(clip_dense_label != constants_3dcnn.NO_GESTURE)
 
             # if most of the frames belong to a gesture label then store the clip under than label
             if check > int(constants_3dcnn.FRAMES_PER_CLIP_PP/2):
-                lab = clip_dense_label[clip_dense_label != constants_3dcnn.NO_GESTURE][0]
+
+                lab_unique = np.unique(clip_dense_label[clip_dense_label != constants_3dcnn.NO_GESTURE])
+                for l in list(lab_unique):
+                    counter[int(l)] += 1
+
+                lab = np.argmax(counter)
+
                 featureLists = tf.train.FeatureLists(feature_list={
                     'rgbs': util._bytes_feature_list(clip),
                     'label': util._bytes_feature_list(np.asarray((lab - 1,), dtype=np.int32)),

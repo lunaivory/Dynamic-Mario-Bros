@@ -235,7 +235,7 @@ with graph.as_default():
                         ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'modelLSTM'), global_step_lstm)
                         print('RNN Model saved in file : %s' % ckpt_save_path)
 
-                    if (prev_accuracy > 0.04):
+                    if (prev_accuracy > 0.8):
                         net_ty = True
                         feed_dict = {mode: False, mode_lstm: True, net_type: net_ty}
                         request_output = [summaries_training, num_correct_predictions_lstm, predictions, predictions_lstm, input_clip_label_op, loss_lstm, train_op_lstm]
