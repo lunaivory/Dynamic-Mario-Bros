@@ -88,13 +88,12 @@ def get_data_training(path, data_type, write_path, sample_ids):
             check = np.sum(clip_dense_label != constants_3dcnn.NO_GESTURE)
 
             # if most of the frames belong to a gesture label then store the clip under than label
-            if check > 5:
+            if check > int(constants_3dcnn.FRAMES_PER_CLIP_PP/2):
                 lab = clip_dense_label[clip_dense_label != constants_3dcnn.NO_GESTURE][0]
-
                 featureLists = tf.train.FeatureLists(feature_list={
                     'rgbs': util._bytes_feature_list(clip),
                     'label': util._bytes_feature_list(np.asarray((lab - 1,), dtype=np.int32)),
-                    'dense_label': util._bytes_feature_list(np.asarray([lab] * 8, dtype=np.int32) - 1),
+                    'dense_label': util._bytes_feature_list(np.asarray(clip_dense_label, dtype=np.int32) - 1),
                     'clip_label': util._bytes_feature_list(np.asarray([lab], dtype=np.int32) - 1),
                     'sample_id': util._bytes_feature_list(np.asarray((sample_id,), dtype=np.int32)),
                     'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))
@@ -119,7 +118,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
                 featureLists = tf.train.FeatureLists(feature_list={
                     'rgbs': util._bytes_feature_list(clip),
                     'label': util._bytes_feature_list(np.asarray((lab - 1,), dtype=np.int32)),
-                    'dense_label': util._bytes_feature_list(np.asarray([lab] * 8, dtype=np.int32) - 1),
+                    'dense_label': util._bytes_feature_list(np.asarray(clip_dense_label, dtype=np.int32) - 1),
                     'clip_label': util._bytes_feature_list(np.asarray([lab], dtype=np.int32) - 1),
                     'sample_id': util._bytes_feature_list(np.asarray((sample_id,), dtype=np.int32)),
                     'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))
@@ -142,11 +141,12 @@ def get_data_training(path, data_type, write_path, sample_ids):
         for rang in no_gesture_ranges:
             clip = vid[rang:(rang + constants_3dcnn.FRAMES_PER_CLIP_PP)]
             lab = constants_3dcnn.NO_GESTURE
+            clip_dense_label = dense_label[rang:(rang+constants_3dcnn.FRAMES_PER_CLIP_PP)]
 
             featureLists = tf.train.FeatureLists(feature_list={
                 'rgbs': util._bytes_feature_list(clip),
                 'label': util._bytes_feature_list(np.asarray((lab - 1,), dtype=np.int32)),
-                'dense_label': util._bytes_feature_list(np.asarray([lab] * 8, dtype=np.int32) - 1),
+                'dense_label': util._bytes_feature_list(np.asarray(clip_dense_label, dtype=np.int32) - 1),
                 'clip_label': util._bytes_feature_list(np.asarray([lab], dtype=np.int32) - 1),
                 'sample_id': util._bytes_feature_list(np.asarray((sample_id,), dtype=np.int32)),
                 'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))

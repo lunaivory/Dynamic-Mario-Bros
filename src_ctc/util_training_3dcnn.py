@@ -22,9 +22,9 @@ def video_preprocessing_training_op(video_op):
         # +- 3frames of jittering
         zero_tensor = tf.zeros(shape=[1], dtype=tf.int32)
         processed_video_jittering = clip_op
-        # jittering = tf.random_uniform(shape=[1], minval=0, maxval=6, dtype=tf.int32)
-        # begin_jittering = tf.squeeze(tf.stack([jittering, zero_tensor, zero_tensor, zero_tensor]))
-        # processed_video_jittering = tf.slice(clip_op, begin=begin_jittering, size=constants_3dcnn.JITTERING)
+        jittering = tf.random_uniform(shape=[1], minval=0, maxval=6, dtype=tf.int32)
+        begin_jittering = tf.squeeze(tf.stack([jittering, zero_tensor, zero_tensor, zero_tensor]))
+        processed_video_jittering = tf.slice(clip_op, begin=begin_jittering, size=constants_3dcnn.JITTERING)
 
         #### Take random crop of dimension CROP=(CLIPS_PER_VIDEO * FRAMES_PER_CLIP, 112, 112, 3)
 
@@ -39,18 +39,18 @@ def video_preprocessing_training_op(video_op):
 
         #### Random scaling
         ## do this by taking a crop of random size and then resizing to the original shape
-        begin_col = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[1])), dtype=tf.int32)
-        begin_row = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[2])), dtype=tf.int32)
+        #begin_col = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[1])), dtype=tf.int32)
+        #begin_row = tf.random_uniform(shape=[1], minval=0, maxval=(int(0.2 * CROP[2])), dtype=tf.int32)
         ## get crop window size scaling_col, scaling_row
-        crop_col = tf.constant(CROP[1], dtype=tf.int32)
-        crop_row = tf.constant(CROP[2], dtype=tf.int32)
-        scaling_col = tf.subtract(crop_col, begin_col)
-        scaling_row = tf.subtract(crop_row, begin_row)
+        #crop_col = tf.constant(CROP[1], dtype=tf.int32)
+        #crop_row = tf.constant(CROP[2], dtype=tf.int32)
+        #scaling_col = tf.subtract(crop_col, begin_col)
+        #scaling_row = tf.subtract(crop_row, begin_row)
         ## do scaling by slicing and then resizing to orignal size
-        begin_scaling = tf.squeeze(tf.stack([zero_tensor, begin_col, begin_row, zero_tensor]))
-        size_scaling = tf.squeeze(tf.stack([clips_in_video, scaling_col, scaling_row, channels]))
-        scaling_crop = tf.slice(processed_video, begin=begin_scaling, size=size_scaling)
-        processed_video = tf.image.resize_images(scaling_crop, size=[CROP[1], CROP[2]])
+        #begin_scaling = tf.squeeze(tf.stack([zero_tensor, begin_col, begin_row, zero_tensor]))
+        #size_scaling = tf.squeeze(tf.stack([clips_in_video, scaling_col, scaling_row, channels]))
+        #scaling_crop = tf.slice(processed_video, begin=begin_scaling, size=size_scaling)
+        #processed_video = tf.image.resize_images(scaling_crop, size=[CROP[1], CROP[2]])
         
         # random mirroring     
         rand = tf.random_uniform(minval=0, maxval=1, shape=[], dtype=tf.float32)
@@ -69,7 +69,7 @@ def video_preprocessing_training_op(video_op):
                                 for i in tf.unstack(processed_video)]
 
         processed_video = tf.stack(processed_video_list)
-    return processed_video
+    return processed_video, jittering
     
 def read_and_decode(filename_queue):
     readerOptions = tf.python_io.TFRecordOptions(compression_type=tf.python_io.TFRecordCompressionType.GZIP)
@@ -92,7 +92,7 @@ def read_and_decode(filename_queue):
         # decode video and apply preprocessing to entire video
         seq_rgb = tf.decode_raw(features_encoded['rgbs'], tf.uint8)
         # seq_rgb_pp = video_preprocessing_training_op(seq_rgb)
-        seq_rgb_pp = video_preprocessing_training_op(seq_rgb)
+        seq_rgb_pp, jittering = video_preprocessing_training_op(seq_rgb)
 
         # decode label and reshape it correct size for shuffle_batch
         seq_label = tf.decode_raw(features_encoded['label'], tf.int32)
@@ -101,11 +101,16 @@ def read_and_decode(filename_queue):
 
         # get dense labels to calculate accuracy
         seq_label_dense = tf.decode_raw(features_encoded['dense_label'], tf.int32)
-        seq_label_dense = tf.reshape(seq_label_dense, [constants_3dcnn.FRAMES_PER_VIDEO])
+        seq_label_dense = tf.reshape(seq_label_dense, [constants_3dcnn.FRAMES_PER_CLIP_PP])
+        seq_label_dense = tf.slice(seq_label_dense, size=[constants_3dcnn.FRAMES_PER_CLIP], begin=jittering)
 
         # get per clip labels to train 3dcnn
-        seq_label_clip = tf.decode_raw(features_encoded['clip_label'], tf.int32)
+        one_hots = tf.stack([tf.one_hot(indices=i,depth=21) for i in tf.unstack(seq_label_dense)])
+        counter = tf.reduce_sum(one_hots, axis=0)
+        seq_label_clip = tf.argmax(counter, axis=0)
+        #seq_label_clip = tf.decode_raw(features_encoded['clip_label'], tf.int32)
         seq_label_clip = tf.reshape(seq_label_clip, [constants_3dcnn.CLIPS_PER_VIDEO])
+        seq_label_clip = tf.cast(seq_label_clip, dtype=tf.int32)
 
         return seq_rgb_pp, seq_label, seq_label_dense, seq_label_clip
 

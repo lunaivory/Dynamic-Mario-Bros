@@ -37,7 +37,7 @@ def get_padding(video, gestures):
     padding = list(video[start_frame:end_frame])
 
     # make sure padding  has enough frame to not run in out of range problems later
-    while len(padding) < int(FRAMES_PER_VIDEO / 2):
+    while len(padding) < int(FRAMES_PER_VIDEO):
         padding *= 2
 
     padding = padding[:int(FRAMES_PER_VIDEO)]
@@ -79,8 +79,8 @@ def get_data_training(path, data_type, write_path, sample_ids):
         clip_label_video = []
 
         for f, lab, id in zip(mid_frame, labels, range(len(labels))):
-            start = f - 40
-            end = f + 40
+            start = f - int(FRAMES_PER_VIDEO/2)
+            end = f + int(FRAMES_PER_VIDEO/2)
 
             label_padding_start = abs(start - gesture_list[id][1])
             label_padding_end = abs(gesture_list[id][2] - end)
@@ -109,6 +109,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
 
             # get frame by frame labels to calculate accuracy during training and Jaccard score for val/test
             dense_lab = label_padding_start * [NO_GESTURE] + label_gesture * [lab] + label_padding_end * [NO_GESTURE]
+            dense_lab = dense_lab[:FRAMES_PER_VIDEO]
             for i in range(0,FRAMES_PER_VIDEO, FRAMES_PER_CLIP):
                 extracted_labels = np.asarray(dense_lab[i: i+FRAMES_PER_CLIP]) == lab
                 if np.sum(extracted_labels) < 4:
@@ -124,7 +125,8 @@ def get_data_training(path, data_type, write_path, sample_ids):
             clip_label_video = []
 
         #add also padding video
-        videos += [np.asarray(padding, dtype=np.uint8)]
+        videos += [np.asarray(padding, dtype=np.uint8).reshape((int(FRAMES_PER_VIDEO / FRAMES_PER_CLIP),
+                                                                             FRAMES_PER_CLIP) + (IMAGE_SIZE))]
         dense_label += [[NO_GESTURE]*FRAMES_PER_VIDEO]
         clip_label += [[NO_GESTURE]*int(FRAMES_PER_VIDEO/FRAMES_PER_CLIP)]
 
@@ -132,7 +134,6 @@ def get_data_training(path, data_type, write_path, sample_ids):
             '''Create TFRecord structure'''
             # context = tf.train.Features(feature={'sample_id': util._int64_feature(sample_id),
             #                                     })
-
             featureLists = tf.train.FeatureLists(feature_list={
                 'rgbs': util._bytes_feature_list(gesture_video),
                 'label': util._bytes_feature_list(np.asarray((label-1,), dtype=np.int32)),

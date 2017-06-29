@@ -242,29 +242,5 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
     # Add dropout operation
 
         dropout2 = tf.layers.dropout(inputs=dense2, rate=dropout_rate, training=mode)
-        dropout2_flat = tf.reshape(dropout2, shape=[1, -1, 4096])
-
-        # with tf.name_scope("LSTM"):
-        #     seq_length =CLIPS_PER_VIDEO # tf.shape(dropout2_flat)[1]
-        #     lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=2048)
-        #     lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, dropout2_flat, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
-        #
-        # # Add dropout operation
-        # with tf.name_scope("dropout3"):
-        #     dropout3 = tf.layers.dropout(inputs=lstm_outputs, rate=dropout_rate, training=mode)
-        #
-        # # Dense Layer
-        # with tf.name_scope("dense3"):
-        #     dense3 = tf.layers.dense(inputs=dropout3, units=4096, activation=tf.nn.relu,
-        #                              #kernel_regularizer=slim.l2_regularizer(weight_decay),
-        #                              #bias_regularizer=slim.l2_regularizer(weight_decay)
-        #                              )
-        #
-        # # Add dropout operation
-        # with tf.name_scope("dropout4"):
-        #     dropout4 = tf.layers.dropout(inputs=dense3, rate=dropout_rate, training=mode)
-        #
-        # with tf.name_scope("logits"):
-        #     logits = tf.layers.dense(inputs=dropout4, units=21)
            
-        return dropout2_flat
+        return dropout2

@@ -82,12 +82,12 @@ with graph.as_default():
                                          dtype=tf.float32,
                                          back_prop=False)
 
-    logits = tf.layers.dense(inputs=tf.reshape(dropout2_flat, shape=[CLIPS_PER_VIDEO,-1]), units=21)
+    logits = tf.layers.dense(inputs=tf.reshape(dropout2_flat, shape=[BATCH_SIZE*CLIPS_PER_VIDEO,-1]), units=21)
 
-    cnn_representations = tf.reshape(cnn_representations, shape=[1, CLIPS_PER_VIDEO, -1])
+    cnn_representations = tf.reshape(cnn_representations, shape=[1, BATCH_SIZE*CLIPS_PER_VIDEO, -1])
     # lstm
     with tf.name_scope("LSTM"):
-        seq_length =CLIPS_PER_VIDEO # tf.shape(dropout2_flat)[1]
+        seq_length = BATCH_SIZE*CLIPS_PER_VIDEO # tf.shape(dropout2_flat)[1]
         lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=LSTM_HIDDEN_UNITS)
         lstm_outputs, _ = tf.nn.dynamic_rnn(lstm_cell, cnn_representations, dtype=tf.float32, time_major=False, sequence_length=[seq_length])
 
@@ -235,7 +235,7 @@ with graph.as_default():
                         ckpt_save_path = saver.save(sess, os.path.join(FLAGS.model_dir, 'modelLSTM'), global_step_lstm)
                         print('RNN Model saved in file : %s' % ckpt_save_path)
 
-                    if (prev_accuracy > 0.10):
+                    if (prev_accuracy > 0.95):
                         net_ty = True
                         feed_dict = {mode: False, mode_lstm: True, net_type: net_ty}
                         request_output = [summaries_training, num_correct_predictions_lstm, predictions, predictions_lstm, input_clip_label_op, loss_lstm, train_op_lstm]
