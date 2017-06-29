@@ -234,7 +234,7 @@ def dynamic_mario_bros(input_layer, dropout_rate, mode, reuse=False):
 
     # Dense Layer
 
-        dense2 = tf.layers.dense(inputs=dropout1, units=4096, activation=tf.nn.relu,
+        dense2 = tf.layers.dense(inputs=dropout1, units=2048, activation=tf.nn.relu,
                                  kernel_regularizer=slim.l2_regularizer(weight_decay),
                                  bias_regularizer=slim.l2_regularizer(weight_decay),
                                  name='dense2')
