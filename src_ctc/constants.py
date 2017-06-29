@@ -3,7 +3,7 @@
 '''#####################'''
 
 # dont use sample 091 since there is a mistake with the labels
-TRAIN_ID = range(1, 100)         # Raw file format : Sample0001.zip - Sample0470.zip
+TRAIN_ID = range(1, 10)         # Raw file format : Sample0001.zip - Sample0470.zip
 VALIDATION_ID = range(475,478)  # Raw file format : Sample0471.zip - Sample0700.zip
 TEST_ID = range(701,703)        # Raw file format : Sample0701.zip - Sample0941.zip
 

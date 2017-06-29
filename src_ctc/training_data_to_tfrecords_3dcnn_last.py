@@ -139,30 +139,31 @@ def get_data_training(path, data_type, write_path, sample_ids):
         #also put some non-noisy no gesture
         no_gesture_ranges = get_no_gesture(gesture_list)
         for rang in no_gesture_ranges:
-            clip = vid[rang:(rang + constants_3dcnn.FRAMES_PER_CLIP_PP)]
-            lab = constants_3dcnn.NO_GESTURE
-            clip_dense_label = dense_label[rang:(rang+constants_3dcnn.FRAMES_PER_CLIP_PP)]
+            if (np.random.uniform() < 0.5):
+                clip = vid[rang:(rang + constants_3dcnn.FRAMES_PER_CLIP_PP)]
+                lab = constants_3dcnn.NO_GESTURE
+                clip_dense_label = dense_label[rang:(rang+constants_3dcnn.FRAMES_PER_CLIP_PP)]
 
-            featureLists = tf.train.FeatureLists(feature_list={
-                'rgbs': util._bytes_feature_list(clip),
-                'label': util._bytes_feature_list(np.asarray((lab - 1,), dtype=np.int32)),
-                'dense_label': util._bytes_feature_list(np.asarray(clip_dense_label, dtype=np.int32) - 1),
-                'clip_label': util._bytes_feature_list(np.asarray([lab], dtype=np.int32) - 1),
-                'sample_id': util._bytes_feature_list(np.asarray((sample_id,), dtype=np.int32)),
-                'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))
-            })
+                featureLists = tf.train.FeatureLists(feature_list={
+                    'rgbs': util._bytes_feature_list(clip),
+                    'label': util._bytes_feature_list(np.asarray((lab - 1,), dtype=np.int32)),
+                    'dense_label': util._bytes_feature_list(np.asarray(clip_dense_label, dtype=np.int32) - 1),
+                    'clip_label': util._bytes_feature_list(np.asarray([lab], dtype=np.int32) - 1),
+                    'sample_id': util._bytes_feature_list(np.asarray((sample_id,), dtype=np.int32)),
+                    'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))
+                })
 
-            sequence_example = tf.train.SequenceExample(feature_lists=featureLists)
+                sequence_example = tf.train.SequenceExample(feature_lists=featureLists)
 
-            '''Write to .tfrecord file'''
+                '''Write to .tfrecord file'''
 
-            tf_write_option = tf.python_io.TFRecordOptions(
+                tf_write_option = tf.python_io.TFRecordOptions(
                 compression_type=tf.python_io.TFRecordCompressionType.GZIP)
-            filename = '%s/%s/Sample%04d_%02d.tfrecords' % (write_path, data_type, sample_id, id)
-            tf_writer = tf.python_io.TFRecordWriter(filename, options=tf_write_option)
-            tf_writer.write(sequence_example.SerializeToString())
-            tf_writer.close()
-            id += 1
+                filename = '%s/%s/Sample%04d_%02d.tfrecords' % (write_path, data_type, sample_id, id)
+                tf_writer = tf.python_io.TFRecordWriter(filename, options=tf_write_option)
+                tf_writer.write(sequence_example.SerializeToString())
+                tf_writer.close()
+                id += 1
 
 
 
