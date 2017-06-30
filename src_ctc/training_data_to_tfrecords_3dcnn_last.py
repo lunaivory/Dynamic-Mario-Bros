@@ -7,6 +7,7 @@ from scipy import stats
 import util
 import time
 import math
+import random
 
 
 '''############################'''
@@ -52,6 +53,13 @@ def get_no_gesture(gestures):
 
 def get_data_training(path, data_type, write_path, sample_ids):
 
+    is_gesture = 0
+    no_gesture = 0
+    count = [0] * 21
+    quota = {}
+    for i in range(0, 21):
+        quota[i] = []
+
     for sample_id in tqdm(sample_ids):
 
         '''Get ChaLearn Data reader'''
@@ -67,7 +75,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
         for gesture_id, start_frame, end_frame in gesture_list:
             dense_label[start_frame:end_frame] = gesture_id
 
-        range = np.arange(0, num_of_frames, constants_3dcnn.FRAMES_PER_CLIP_PP)[:-1]
+        range_num = np.arange(0, num_of_frames, constants_3dcnn.FRAMES_PER_CLIP_PP)[:-1]
 
         # no_gesture_ranges = get_no_gesture(gesture_list)
         # ranges_lengths.append(NUM_OF_NO_GESTURE_CLIPS)
@@ -82,7 +90,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
         vid = vid * mask
 
         id = 0
-        for rang in range:
+        for rang in range_num:
             counter = np.zeros(shape=22)
             clip = vid[rang:(rang+constants_3dcnn.FRAMES_PER_CLIP_PP)]
             clip_dense_label = dense_label[rang:(rang+constants_3dcnn.FRAMES_PER_CLIP_PP)]
@@ -90,6 +98,7 @@ def get_data_training(path, data_type, write_path, sample_ids):
 
             # if most of the frames belong to a gesture label then store the clip under than label
             if check > int(constants_3dcnn.FRAMES_PER_CLIP_PP/2):
+                is_gesture += 1
 
                 lab_unique = np.unique(clip_dense_label[clip_dense_label != constants_3dcnn.NO_GESTURE])
                 for l in list(lab_unique):
@@ -106,6 +115,10 @@ def get_data_training(path, data_type, write_path, sample_ids):
                     'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))
                 })
 
+                count[lab-1] += 1
+                if (len(quota[lab-1]) < 100):
+                    quota[lab-1].append(featureLists)
+
                 sequence_example = tf.train.SequenceExample(feature_lists=featureLists)
 
                 '''Write to .tfrecord file'''
@@ -119,8 +132,9 @@ def get_data_training(path, data_type, write_path, sample_ids):
                 id+=1
 
             #get with prob 30% also some noisy no-gesture frames. Probability is 30% to avoid class imbalance
-            elif (check != 0) and (np.random.uniform() < 0.3):
+            elif (check != 0) and no_gesture * 20 < is_gesture:
                 lab = constants_3dcnn.NO_GESTURE
+                no_gesture += 1
 
                 featureLists = tf.train.FeatureLists(feature_list={
                     'rgbs': util._bytes_feature_list(clip),
@@ -130,6 +144,10 @@ def get_data_training(path, data_type, write_path, sample_ids):
                     'sample_id': util._bytes_feature_list(np.asarray((sample_id,), dtype=np.int32)),
                     'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))
                 })
+
+                count[lab-1] += 1
+                if (len(quota[lab-1]) < 100):
+                    quota[lab-1].append(featureLists)
 
                 sequence_example = tf.train.SequenceExample(feature_lists=featureLists)
 
@@ -143,34 +161,55 @@ def get_data_training(path, data_type, write_path, sample_ids):
                 tf_writer.close()
                 id += 1
 
-        #also put some non-noisy no gesture
-        no_gesture_ranges = get_no_gesture(gesture_list)
-        for rang in no_gesture_ranges:
-            if (np.random.uniform() < 0.5):
-                clip = vid[rang:(rang + constants_3dcnn.FRAMES_PER_CLIP_PP)]
-                lab = constants_3dcnn.NO_GESTURE
-                clip_dense_label = dense_label[rang:(rang+constants_3dcnn.FRAMES_PER_CLIP_PP)]
+        if (sample_id == sample_ids[-1]):
+            max_count = max(count)
+            for i in range(21):
+                while (count[i] < max_count):
+                    count[i] += 1
+                    idx = random.randrange(len(quota[i]))
+                    sequence_example = tf.train.SequenceExample(feature_lists = quota[i][idx])
 
-                featureLists = tf.train.FeatureLists(feature_list={
-                    'rgbs': util._bytes_feature_list(clip),
-                    'label': util._bytes_feature_list(np.asarray((lab - 1,), dtype=np.int32)),
-                    'dense_label': util._bytes_feature_list(np.asarray(clip_dense_label, dtype=np.int32) - 1),
-                    'clip_label': util._bytes_feature_list(np.asarray([lab], dtype=np.int32) - 1),
-                    'sample_id': util._bytes_feature_list(np.asarray((sample_id,), dtype=np.int32)),
-                    'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))
-                })
+                    tf_write_option = tf.python_io.TFRecordOptions(
+                        compression_type=tf.python_io.TFRecordCompressionType.GZIP)
+                    filename = '%s/%s/Sample%04d_%02d.tfrecords' % (write_path, data_type, sample_id, id)
+                    tf_writer = tf.python_io.TFRecordWriter(filename, options=tf_write_option)
+                    tf_writer.write(sequence_example.SerializeToString())
+                    tf_writer.close()
+                    id += 1
 
-                sequence_example = tf.train.SequenceExample(feature_lists=featureLists)
 
-                '''Write to .tfrecord file'''
+    print(is_gesture, no_gesture)
+    print(max_count)
+    print(count)
 
-                tf_write_option = tf.python_io.TFRecordOptions(
-                compression_type=tf.python_io.TFRecordCompressionType.GZIP)
-                filename = '%s/%s/Sample%04d_%02d.tfrecords' % (write_path, data_type, sample_id, id)
-                tf_writer = tf.python_io.TFRecordWriter(filename, options=tf_write_option)
-                tf_writer.write(sequence_example.SerializeToString())
-                tf_writer.close()
-                id += 1
-
+#        #also put some non-noisy no gesture
+#        no_gesture_ranges = get_no_gesture(gesture_list)
+#        for rang in no_gesture_ranges:
+#            if (np.random.uniform() < 0.5):
+#                clip = vid[rang:(rang + constants_3dcnn.FRAMES_PER_CLIP_PP)]
+#                lab = constants_3dcnn.NO_GESTURE
+#                clip_dense_label = dense_label[rang:(rang+constants_3dcnn.FRAMES_PER_CLIP_PP)]
+#
+#                featureLists = tf.train.FeatureLists(feature_list={
+#                    'rgbs': util._bytes_feature_list(clip),
+#                    'label': util._bytes_feature_list(np.asarray((lab - 1,), dtype=np.int32)),
+#                    'dense_label': util._bytes_feature_list(np.asarray(clip_dense_label, dtype=np.int32) - 1),
+#                    'clip_label': util._bytes_feature_list(np.asarray([lab], dtype=np.int32) - 1),
+#                    'sample_id': util._bytes_feature_list(np.asarray((sample_id,), dtype=np.int32)),
+#                    'num_frames': util._bytes_feature_list(np.asarray((num_of_frames,), dtype=np.int32))
+#                })
+#
+#                sequence_example = tf.train.SequenceExample(feature_lists=featureLists)
+#
+#                '''Write to .tfrecord file'''
+#
+#                tf_write_option = tf.python_io.TFRecordOptions(
+#                compression_type=tf.python_io.TFRecordCompressionType.GZIP)
+#                filename = '%s/%s/Sample%04d_%02d.tfrecords' % (write_path, data_type, sample_id, id)
+#                tf_writer = tf.python_io.TFRecordWriter(filename, options=tf_write_option)
+#                tf_writer.write(sequence_example.SerializeToString())
+#                tf_writer.close()
+#                id += 1
+#
 
 
