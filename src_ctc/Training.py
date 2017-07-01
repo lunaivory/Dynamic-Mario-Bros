@@ -19,7 +19,7 @@ from sklearn.metrics import jaccard_similarity_score
 '''#                Create Network                         #'''
 '''#########################################################'''
 
-CNN_PATH = './runs/1498765456/model-1501'
+CNN_PATH = './runs/1498869499/model-14501'
 
 ''' Set Up Flags'''
 # Model Hyperparameters
@@ -163,7 +163,7 @@ with graph.as_default():
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
         # load variable for 3dcnn
-        var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='3Dcnn_model')
+        var_list = tf.trainable_variables()[:22]
 
         loader = tf.train.Saver(var_list = var_list)
         loader.restore(sess, CNN_PATH)
