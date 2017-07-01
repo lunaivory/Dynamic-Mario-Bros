@@ -118,7 +118,7 @@ def input_pipeline(filenames):
     with tf.name_scope('input_pipeline_training_3dcnn'):
 
         # Create a input file queue
-        filename_queue = tf.train.string_input_producer(filenames, num_epochs=constants_3dcnn.NUM_EPOCHS, shuffle=True, capacity=1000,
+        filename_queue = tf.train.string_input_producer(filenames, shuffle=True, capacity=constants_3dcnn.QUEUE_CAPACITY,
                                                         name='Training_string_input')
 
         # Read data from .tfrecords files and decode to a list of samples (Using threads)

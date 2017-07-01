@@ -72,8 +72,8 @@ def input_pipeline(filenames):
     with tf.name_scope('input_pipeline_testing'):
 
         # Create a input file queue
-        filename_queue = tf.train.string_input_producer(filenames, num_epochs=NUM_EPOCHS, 
-                                                        shuffle=False, capacity=1000,
+        filename_queue = tf.train.string_input_producer(filenames,  
+                                                        shuffle=False, capacity=QUEUE_CAPACITY,
                                                         name='Testing_string_input')
 
         # Read data from .tfrecords files and decode to a list of samples (Using threads)
