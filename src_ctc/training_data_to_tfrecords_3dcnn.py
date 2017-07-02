@@ -8,6 +8,7 @@ import util
 import math
 import time
 import math
+import random
 
 
 '''############################'''
@@ -19,9 +20,15 @@ from constants import *
 '''#  Create TFRecord  #'''
 '''#####################'''
 
-gesture_cnt = [0, 0]
 
 def get_data_training(path, data_type, write_path, sample_ids):
+
+    is_gesture = 0
+    no_gesture = 0
+    count = [0] * 21
+    quota = {}
+    for i in range(0, 21):
+        quota[i] = np.zeros([8, 150, 120, 3], np.uint8)
 
     isTrain = data_type.find('Train') >= 0
 
@@ -62,24 +69,70 @@ def get_data_training(path, data_type, write_path, sample_ids):
             clip_dense_labels_slice = dense_label[clip_label: clip_label+FRAMES_PER_CLIP]
             lab_truth = clip_dense_labels_slice != NO_GESTURE
             n = np.sum(lab_truth)
+            lab = -1
             if n > 5:
-                cut_clip_labels.append(clip_dense_labels_slice[lab_truth][0])
-                #cut_vid+= [vid[clip_label : clip_label + FRAMES_PER_CLIP]]
-                cut_vid = np.concatenate((cut_vid, vid[clip_label : clip_label + FRAMES_PER_CLIP]), axis=0)
-                cut_dense_labels += [clip_dense_labels_slice[lab_truth][0]]*FRAMES_PER_CLIP
-                gesture_cnt[0] += 1
-            elif gesture_cnt[0] > 15* gesture_cnt[1]:
-                cut_clip_labels.append(NO_GESTURE)
+                lab = int(clip_dense_labels_slice[lab_truth][0])
+                if (count[lab] <= 5 * max(count) + 10):
+                    cut_clip_labels.append(lab)
+                    #cut_vid+= [vid[clip_label : clip_label + FRAMES_PER_CLIP]]
+                    cut_vid = np.concatenate((cut_vid, vid[clip_label : clip_label + FRAMES_PER_CLIP]), axis=0)
+                    cut_dense_labels += [lab]*FRAMES_PER_CLIP
+                    is_gesture += 1
+                    count[lab-1] += 1
+                else:
+                    lab = -1
+
+            elif is_gesture >= 20 * no_gesture:
+                lab = NO_GESTURE
+                cut_clip_labels.append(lab)
                 cut_vid = np.concatenate((cut_vid, vid[clip_label : clip_label + FRAMES_PER_CLIP]), axis=0)
                 #cut_vid += [vid[clip_label : clip_label + FRAMES_PER_CLIP]]
-                cut_dense_labels += [NO_GESTURE] * FRAMES_PER_CLIP
-                gesture_cnt[1] += 1
+                cut_dense_labels += [lab] * FRAMES_PER_CLIP
+                no_gesture += 1
+                count[lab-1] += 1
 
+            if (lab >= 0 and count[lab-1] < 100):
+                quota[lab-1] = np.concatenate((quota[lab-1], vid[clip_label : clip_label + FRAMES_PER_CLIP]), axis=0)
+
+        if sample_id == sample_ids[-1]:
+            
+            print(len(cut_dense_labels))
+            print(len(cut_clip_labels))
+            print(cut_vid.shape)
+            print()
+
+            max_count = max(count)
+            q = []
+            for i in range(NO_GESTURE):
+                quota[i] = quota[i][8:]
+                if (count[i] < max_count):
+                    q += [i]
+
+            while (len(q) > 0):
+                idx = random.randrange(len(q))
+                lab = q[idx] + 1
+                l = random.randrange(min([max_count - count[lab-1], 6])) + 1
+                st = random.randrange(50)
+                cut_vid = np.concatenate((cut_vid, quota[lab-1][st*FRAMES_PER_CLIP:(st+l)*FRAMES_PER_CLIP]), axis = 0)
+                cut_clip_labels += [lab] * l
+                cut_dense_labels += [lab] * l * FRAMES_PER_CLIP
+                count[lab-1] += l
+                if (count[lab-1] >= max_count):
+                    q = q[0:idx] + q[idx+1:]
+            print(len(cut_dense_labels))
+            print(len(cut_clip_labels))
+            print(cut_vid.shape)
+            print()
+            
         cut_clip_labels = np.asarray(cut_clip_labels, dtype=np.int32)
         cut_vid = cut_vid[8:]
         #cut_vid = np.asarray(cut_vid, dtype = np.uint8)
         #cut_vid = np.reshape(cut_vid, (cut_vid.shape[0] * cut_vid.shape[1], cut_vid.shape[2], cut_vid.shape[3], cut_vid.shape[4]))
         cut_dense_labels = np.asarray(cut_dense_labels, dtype=np.int32)
+
+        if (sample_ids[-1] == sample_id or sample_ids[-2] == sample_id):
+            print(count)
+
 
 
         num_of_frames = cut_dense_labels.shape[0]
@@ -111,8 +164,5 @@ def get_data_training(path, data_type, write_path, sample_ids):
             tf_writer = tf.python_io.TFRecordWriter(filename, options=tf_write_option)
             tf_writer.write(sequence_example.SerializeToString())
             tf_writer.close()
-
-        print(gesture_cnt)
-
 
 

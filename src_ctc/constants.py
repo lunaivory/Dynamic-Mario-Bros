@@ -3,7 +3,7 @@
 '''#####################'''
 
 # dont use sample 091 since there is a mistake with the labels
-TRAIN_ID = range(1, 500)         # Raw file format : Sample0001.zip - Sample0470.zip
+TRAIN_ID = range(1, 471)         # Raw file format : Sample0001.zip - Sample0470.zip
 VALIDATION_ID = range(475,478)  # Raw file format : Sample0471.zip - Sample0700.zip
 TEST_ID = range(701,703)        # Raw file format : Sample0701.zip - Sample0941.zip
 
@@ -14,9 +14,9 @@ RAW_DATA_PATH = '../data_pp/'
 TFRecord_DATA_PATH = '../tf-data/'
 
 # use clips of 80 frames like they did in the paper
-FRAMES_PER_VIDEO_PP = 64 # FRAMES_PER_VIDEO_PP > FRAMES_PER_VIDEO
+FRAMES_PER_VIDEO_PP = 160 # FRAMES_PER_VIDEO_PP > FRAMES_PER_VIDEO
 FRAMES_PER_CLIP = 8 
-FRAMES_PER_VIDEO = 64
+FRAMES_PER_VIDEO = 160
 CLIPS_PER_VIDEO = int(FRAMES_PER_VIDEO_PP / FRAMES_PER_CLIP)
 
 """preprocesssing parameters"""
@@ -32,7 +32,7 @@ DROPOUT_RATE =0.5 #0.75
 LEARNING_RATE = 1e-4 #3e-4
 LEARNING_RATE_LSTM = 1e-4 #3e-4
 BATCH_SIZE = 2 # 5 gestures per batch
-NUM_EPOCHS = 100000
+NUM_EPOCHS = 10000000000000
 PRINT_EVERY_STEP = 20 #200
 EVALUATE_EVERY_STEP = 1000
 CHECKPOINT_EVERY_STEP = 500

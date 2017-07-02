@@ -19,7 +19,7 @@ from sklearn.metrics import jaccard_similarity_score
 '''#                Create Network                         #'''
 '''#########################################################'''
 
-CNN_PATH = './runs/1498869499/model-14501'
+CNN_PATH = './runs/1498869499/model-19001'
 
 ''' Set Up Flags'''
 # Model Hyperparameters
