@@ -22,6 +22,9 @@
    smaller dataset.
 3. 3DCNN model reached X% jaccard accuracy on testing dataset.
 4. CNN-RNN model reached X% jaccard accuracy on testing dataset.
+5. Trained 3DCNN models can be restored from /src_ctc/runs/
+6. Predicted .csv files by our trained 3DCNN models for each sample is stored under
+   /evaluation/prediction
 
 
 # File explaination
