@@ -20,9 +20,9 @@
 1. 3DCNN model reached 90% accuracy in training.
 2. RNN-CNN model reached 30% accuracy in training, but can reach 90% accuracy on
    smaller dataset.
-3. 3DCNN model reached X% jaccard accuracy on testing dataset.
-4. CNN-RNN model reached X% jaccard accuracy on testing dataset.
-5. Trained 3DCNN models can be restored from /src_ctc/runs/
+3. 3DCNN model reached 58% jaccard accuracy on testing dataset.
+4. CNN-RNN model reached _% jaccard accuracy on testing dataset.
+5. Trained 3DCNN models can be restored from https://polybox.ethz.ch/index.php/s/6fzr0yAJC9Xsimm
 6. Predicted .csv files by our trained 3DCNN models for each sample is stored under
    /evaluation/prediction
 
