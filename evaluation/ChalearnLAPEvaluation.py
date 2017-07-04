@@ -160,6 +160,5 @@ def evalGesture(prediction_dir,truth_dir):
         # Get the score
         numSamples+=1
         score+=gesture_overlap_csv(labelsFile, predFile, numFrames)
-        print(score / numSamples)
 
     return score/numSamples
